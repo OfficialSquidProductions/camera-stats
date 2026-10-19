@@ -19,8 +19,8 @@ def snapshot():
     (root/'last-dump.log').write_bytes(run('shell','uiautomator','dump','/sdcard/camera-stats-ui.xml'))
     data=run('exec-out','cat','/sdcard/camera-stats-ui.xml');(root/'last-ui.xml').write_bytes(data)
     return data
-def wait_for(text,name):
-    for attempt in range(12):
+def wait_for(text,name,attempts=12):
+    for attempt in range(attempts):
         data=snapshot()
         try:tree=ET.fromstring(data)
         except ET.ParseError:
@@ -38,8 +38,16 @@ def tap(node):
     run('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2))
 previous=Path(os.environ['CAMERA_STATS_PREVIOUS_APK']).resolve()
 run('install',str(previous));launch();screen('previous-camera-stats')
-tap(wait_for('Open The Last Light demo','initial'))
-wait_for('The Last Light · DEMO','demo');screen('demo-portrait')
+# On a cold phone emulator the first input can arrive while its launch transition still owns touch.
+# Retry only while the old app is visibly still blank, before any migration is attempted.
+for attempt in range(3):
+    tap(wait_for('Open The Last Light demo','initial'))
+    try:
+        wait_for('The Last Light · DEMO','demo',attempts=4);break
+    except AssertionError:
+        wait_for('New production','still-blank',attempts=1)
+else:raise AssertionError('Old Camera Stats demo could not be prepared for the upgrade')
+screen('demo-portrait')
 run('shell','am','force-stop',package);launch()
 wait_for('The Last Light · DEMO','reopened');screen('demo-reopened')
 run('install','-r',str(apk));launch()

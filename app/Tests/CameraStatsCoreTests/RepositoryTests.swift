@@ -1,10 +1,27 @@
 import XCTest
 import Foundation
+import PDFKit
 @testable import CameraStatsCore
 @testable import CameraStats
 
 final class RepositoryTests:XCTestCase {
     func temporary() throws ->URL {let root=FileManager.default.temporaryDirectory.appendingPathComponent("CameraStatsTests-"+UUID().uuidString); try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true); addTeardownBlock{try? FileManager.default.removeItem(at:root)}; return root}
+    @MainActor func testRebrandReadsOriginalCameraStatsDatabaseWithoutRewritingReports() throws {
+        let url=try XCTUnwrap(Bundle.module.url(forResource:"LegacyRebrand",withExtension:"json",subdirectory:"Fixtures"))
+        let fixture=try XCTUnwrap(JSONSerialization.jsonObject(with:Data(contentsOf:url)) as? [String:String])
+        XCTAssertEqual(fixture["sourceCommit"],"fe51b582742d036bb1c4bae09d2df3497777675c")
+        let root=try temporary(), db=root.appendingPathComponent("reports.sqlite3")
+        try XCTUnwrap(Data(base64Encoded:try XCTUnwrap(fixture["sqlite"]))).write(to:db)
+        let expected=try Exchange.read(XCTUnwrap(Data(base64Encoded:try XCTUnwrap(fixture["expectedPackage"])))).report
+        let prefs=try XCTUnwrap(UserDefaults(suiteName:"ShotReporterRebrandTest-"+UUID().uuidString));prefs.set("Dark",forKey:"theme")
+        let store=Store(root:root,preferences:prefs)
+        XCTAssertFalse(store.blocked);XCTAssertNil(store.error);XCTAssertEqual(store.report,expected)
+        XCTAssertEqual(store.documents.count,1);XCTAssertEqual(store.slot,"10000000-0000-4000-8000-000000000001")
+        XCTAssertEqual(prefs.string(forKey:"theme"),"Dark")
+        let repo=try Repository(url:db);XCTAssertEqual(try repo.load(store.slot,previous:true).report.active.count,3)
+        XCTAssertEqual(try Exchange.read(Exchange.export(store.report,device:"Shot Reporter fixture")).report,expected)
+        let pdf=try Reports.pdf(store.report);XCTAssertTrue(PDFKit.PDFDocument(data:pdf)?.string?.contains("Shot Reporter") == true)
+    }
     func testCommitReopenPreviousAndIndependentSlots() throws {
         let url=try temporary().appendingPathComponent("reports.sqlite3"), slot=UUID().uuidString, other=UUID().uuidString
         var r=Report.demo(); var hash:String
