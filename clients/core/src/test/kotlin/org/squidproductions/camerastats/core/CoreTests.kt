@@ -1,0 +1,69 @@
+package org.squidproductions.camerastats.core
+
+import kotlin.test.*
+import org.junit.jupiter.api.Test
+import java.io.File
+import kotlinx.serialization.json.*
+
+class CoreTests {
+    private fun fixture(name:String="swift-demo")=File(System.getProperty("fixtures"),"$name.camreport").readBytes()
+    @Test fun swiftGoldenRoundtripAndKotlinExport() {
+        val original=Exchange.read(fixture()).report
+        assertEquals(3,original.active.size);assertEquals(listOf("MOS","Tail slate"),original.entries.first().flags)
+        assertTrue(original.values.getValue("unicodeTest").contains("カメラ"))
+        val bytes=Exchange.export(original,"JVM conformance fixture");assertEquals(original,Exchange.read(bytes).report)
+        val folder=File("build/conformance").apply { mkdirs() };File(folder,"kotlin-roundtrip.camreport").writeBytes(bytes)
+        val changed=original.next("8B","JVM conformance fixture");File(folder,"kotlin-edited.camreport").writeBytes(Exchange.export(changed,"JVM conformance fixture"))
+    }
+    @Test fun completeOwnerDemoRemainsCanonicalAndIndependent() {
+        val base=Exchange.decode(File(System.getProperty("fixtures"),"owner-demo.json").readBytes());val a=base.separateDemo();val b=base.separateDemo()
+        assertNotEquals(a.id,b.id);assertEquals(3,a.active.size);assertEquals(listOf("2"),a.active.filter { "Circle" in it.flags }.map { it.values["take"] })
+        assertTrue(a.active.filter { "MOS" in it.flags || "Tail slate" in it.flags }.isEmpty());assertTrue(a.values.getValue("demoShotPlan").contains("8B · B camera · 24mm"))
+        assertEquals("84b4bea90b72a1d3d09be8925b07cdf696e9bc579386ed21c3255bb305336f87",Exchange.digest(a.values.getValue("demoScript").toByteArray()))
+        assertNotEquals(a.entries.first().id,b.entries.first().id)
+    }
+    @Test fun nextTakeUsesCameraAndKeepsEarlierSnapshots() {
+        val old=Exchange.read(fixture()).report;val updated=old.copy(defaults=old.defaults+("iso" to "1600")).next("3A","Test")
+        assertEquals("4",updated.active.last().values["take"]);assertEquals("1600",updated.active.last().values["iso"]);assertEquals(old.entries,updated.entries.dropLast(1))
+        assertEquals("1",updated.copy(defaults=updated.defaults+("camera" to "B")).next("3A","Test").active.last().values["take"])
+    }
+    @Test fun conservativeMergeAndIdempotenceMatchSwift() {
+        val base=Exchange.read(fixture()).report;val incoming=Exchange.read(fixture("swift-additions"));val preview=Exchange.preview(base,incoming)
+        assertEquals(1,preview.additions.size);assertTrue(preview.conflicts.isEmpty())
+        val merged=Exchange.merge(base,incoming,"Test");assertEquals(4,merged.active.size);assertEquals(merged,Exchange.merge(merged,incoming,"Test"))
+        val conflict=Exchange.read(fixture("swift-conflict"));assertTrue(Exchange.preview(base,conflict).conflicts.isNotEmpty());assertFails { Exchange.merge(base,conflict,"Test") }
+        val tombstone=Exchange.read(fixture("swift-tombstone"));assertTrue(Exchange.preview(base,tombstone).conflicts.isNotEmpty())
+        assertFails { Exchange.preview(base.copy(id=identity()),incoming) }
+    }
+    @Test fun corruptUnsafeAndUnsupportedPackagesAreRejected() {
+        val archive=fixture();val files=StoredZIP.read(archive)
+        val crc=archive.copyOf();crc[100]=(crc[100].toInt() xor 1).toByte();assertFails { Exchange.read(crc) }
+        val compression=archive.copyOf();compression[8]=8;assertFails { Exchange.read(compression) }
+        val encrypted=archive.copyOf();encrypted[6]=1;assertFails { Exchange.read(encrypted) }
+        assertFails { Exchange.read(archive.copyOf(archive.size-1)) };assertFails { Exchange.read(archive+byteArrayOf(0)) }
+        assertFails { Exchange.read(StoredZIP.write(mapOf("../report.json" to files.getValue("report.json")))) }
+        val manifest=Exchange.json.parseToJsonElement(files.getValue("manifest.json").toString(Charsets.UTF_8)).jsonObject
+        val schema=JsonObject(manifest+("schema" to JsonPrimitive(99))).toString().toByteArray()
+        assertFails { Exchange.read(StoredZIP.write(files+("manifest.json" to schema))) }
+        val body=Exchange.json.parseToJsonElement(files.getValue("report.json").toString(Charsets.UTF_8)).jsonObject
+        val future=JsonObject(body+("futureField" to JsonPrimitive("must not be lost"))).toString().toByteArray()
+        val correctedManifest=JsonObject(manifest+("sha256" to JsonPrimitive(Exchange.digest(future)))).toString().toByteArray()
+        assertFails { Exchange.read(StoredZIP.write(files+mapOf("manifest.json" to correctedManifest,"report.json" to future))) }
+    }
+    @Test fun boundsAndDuplicateRecordsAreRejected() {
+        val archive=fixture();val huge=archive.copyOf();for(i in 18..21) huge[i]=0xff.toByte();assertFails { Exchange.read(huge) }
+        for(size in listOf(0,1,21,32,100,archive.size-5)) assertFails { Exchange.read(archive.copyOf(size)) }
+        val r=Exchange.read(archive).report;assertFails { Exchange.read(Exchange.export(r.copy(entries=r.entries+ r.entries.first()),"Test")) }
+    }
+    @Test fun unicodeEscapingLongNotesAndPortableNames() {
+        val report=Exchange.read(fixture()).report;val e=report.entries.first().copy(values=report.entries.first().values+("remarks" to "a,\"b\"\n<script>alert(1)</script> カメラ"));val r=report.copy(entries=listOf(e))
+        assertTrue(Reports.csv(r).contains("\"a,\"\"b\"\""));assertTrue(Reports.html(r).contains("&lt;script&gt;"));assertFalse(Reports.html(r).contains("<script>"))
+        assertTrue(Reports.printable(r).joinToString("\n").contains("カメラ"));assertTrue(Naming.preview(Naming.movie,r,e).contains("SC3A"))
+        assertFails { Naming.preview("CON",r,e) };assertFails { Naming.preview("{missing}",r,e) };assertFails { Naming.preview("../../footage",r,e) }
+        val long=r.copy(entries=listOf(e.copy(values=e.values+("remarks" to "Long note ".repeat(10000)+"FINAL-MARKER"))))
+        assertTrue(Reports.printable(long).last { it.startsWith("Camera remarks:") }.endsWith("FINAL-MARKER"))
+    }
+    @Test fun thousandTakeAppleFixtureRetainsFields() {
+        val r=Exchange.read(fixture("swift-1000-takes")).report;assertEquals(1000,r.active.size);assertEquals(r,Exchange.read(Exchange.export(r,"Scale fixture")).report)
+    }
+}

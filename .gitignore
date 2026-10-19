@@ -21,3 +21,11 @@ __pycache__/
 *.sqlite3-wal
 *.sqlite3-shm
 /docs/APPLE_RELEASE_HANDOFF.md
+
+# Deterministic non-private interoperability test fixtures only.
+!fixtures/camreport/*.camreport
+clients/.gradle/
+clients/**/build/
+clients/local.properties
+
+/.camera-gradle-ci/

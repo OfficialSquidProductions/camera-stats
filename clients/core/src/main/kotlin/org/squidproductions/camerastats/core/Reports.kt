@@ -1,0 +1,43 @@
+package org.squidproductions.camerastats.core
+
+import java.text.Normalizer
+
+object Reports {
+    fun csv(report:Report):String {
+        val keys=(Schema.take+Schema.settings).map { it.id }+listOf("flags","reviewed","entryID")
+        fun quote(value:String)="\""+value.replace("\"","\"\"")+"\""
+        return (listOf(keys.map(::quote).joinToString(","))+report.active.map { e -> keys.map { key -> quote(when(key) { "flags" -> e.flags.sorted().joinToString("; ");"reviewed" -> e.reviewed.toString();"entryID" -> e.id;else -> e.values[key].orEmpty() }) }.joinToString(",") }).joinToString("\r\n")+"\r\n"
+    }
+    fun html(report:Report):String {
+        fun escape(v:String)=v.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;")
+        val fields=Schema.take+Schema.settings
+        val rows=report.active.joinToString("") { e -> "<tr>"+fields.joinToString("") { "<td>${escape(e.values[it.id].orEmpty())}</td>" }+"<td>${escape(e.flags.sorted().joinToString(", "))}</td></tr>" }
+        return "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Camera Stats report</title><style>body{font:14px system-ui;margin:32px;color:#241d21}table{border-collapse:collapse}td,th{border:1px solid #777;padding:8px;white-space:pre-wrap}thead{display:table-header-group}</style><h1>${escape(report.values["title"] ?: "Untitled")}</h1><p>A Squid Productions Software · Revision ${report.revision} · ${if(report.missing.isEmpty()) "Ready for Submission" else "DRAFT — ${report.missing.size} missing requirements"}</p><p>${escape(report.values.toSortedMap().entries.joinToString(" · ") { "${it.key}: ${it.value}" })}</p><table><thead><tr>"+fields.joinToString("") { "<th>${escape(it.title)}</th>" }+"<th>Flags</th></tr></thead><tbody>$rows</tbody></table></html>"
+    }
+    /** Lines retain every field; native PDF adapters wrap and paginate these without truncation. */
+    fun printable(report:Report):List<String> = buildList {
+        add("CAMERA STATS · Camera Report");add("A Squid Productions Software")
+        add("${report.values["title"] ?: "Untitled"} · ${report.values["date"].orEmpty()} · Revision ${report.revision}")
+        add(if(report.missing.isEmpty()) "READY FOR SUBMISSION · self-reviewed local report" else "DRAFT · ${report.missing.size} outstanding requirements")
+        Schema.project.forEach { add("${it.title}: ${report.values[it.id] ?: "—"}") }
+        report.active.forEach { entry ->
+            add("");add("SCENE ${entry.values["scene"].orEmpty()} · TAKE ${entry.values["take"].orEmpty()} · CAMERA ${entry.values["camera"].orEmpty()}")
+            add("Flags: ${entry.flags.sorted().joinToString(", ").ifBlank { "None" }} · ${if(entry.reviewed) "Reviewed" else "Review pending"}")
+            (Schema.take+Schema.settings).forEach { add("${it.title}: ${entry.values[it.id] ?: "—"}") }
+        }
+    }
+}
+object Naming {
+    const val movie="{project}_SC{scene}_TK{take}_CAM-{camera}"
+    const val tv="{project}_S{season}E{episode}_SC{scene}_TK{take}_CAM-{camera}"
+    fun preview(template:String,report:Report,entry:Entry):String {
+        val values=report.values+entry.values+mapOf("project" to report.values["title"].orEmpty())
+        val substituted=Regex("\\{([^}]*)}").replace(template) { match ->
+            val token=match.groupValues[1];val value=values[token].orEmpty();require(value.isNotEmpty()) { "Missing naming token: $token" };require('{' !in value && '}' !in value) { "Invalid token value." };value
+        }
+        val stem=Normalizer.normalize(substituted,Normalizer.Form.NFC)
+        val reserved=setOf("CON","PRN","AUX","NUL")+(1..9).flatMap { listOf("COM$it","LPT$it") }
+        require(stem.isNotEmpty() && stem.toByteArray(Charsets.UTF_8).size<=180 && stem.none { it in "<>:\"/\\|?*{}" || it.code<32 } && !stem.endsWith('.') && !stem.endsWith(' ') && stem.substringBefore('.').uppercase() !in reserved) { "Name fails portable filename rules." }
+        return stem
+    }
+}

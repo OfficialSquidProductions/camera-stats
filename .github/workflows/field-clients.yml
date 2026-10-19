@@ -1,0 +1,126 @@
+name: Field clients
+on:
+  push:
+    branches: [main, windows-android-field-alpha]
+    paths: ['clients/**', 'fixtures/**', 'tools/fixtures/**', 'tools/generate_cross_platform_fixtures.py', '.github/workflows/field-clients.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: field-clients-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    permissions:
+      contents: write
+    runs-on: windows-2025
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: clients
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.camera-gradle-ci
+      SKIKO_RENDER_API: SOFTWARE_COMPAT
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Core, persistence, native PDF and Compose UI tests
+        run: ./gradlew.bat -PskipAndroid=true :core:test :jdbc:test :desktop:test --no-daemon --console=plain
+      - name: Package bundled-runtime Windows clients
+        run: ./gradlew.bat -PskipAndroid=true :desktop:packageExe :desktop:packageMsi --no-daemon --console=plain
+      - name: Preserve development packages and QA in an owner-visible draft
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python ../tools/publish_development_evidence.py --label windows --evidence core/build/conformance --evidence core/build/test-results --evidence jdbc/build/test-results --evidence desktop/build/test-results --evidence desktop/build/qa --asset "desktop/build/compose/binaries/main/exe/*.exe" --asset "desktop/build/compose/binaries/main/msi/*.msi"
+
+  android:
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [pixel_6, pixel_c]
+    defaults:
+      run:
+        working-directory: clients
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.camera-gradle-ci
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify preinstalled SDK and build test APKs
+        run: |
+          test -d "$ANDROID_HOME/platforms/android-35"
+          ./gradlew :android:assembleDebug :android:assembleDebugAndroidTest --no-daemon --console=plain
+      - name: Prepare AOSP emulator without accepting new licenses
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'emulator' 'system-images;android-35;default;x86_64' </dev/null
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name camera-qa --package 'system-images;android-35;default;x86_64' --device '${{ matrix.device }}'
+          if test -e /dev/kvm; then sudo setfacl -m u:$(id -u):rw /dev/kvm; fi
+          "$ANDROID_HOME/emulator/emulator" -avd camera-qa -port 5554 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -memory 2048 -cores 2 >"$RUNNER_TEMP/emulator.log" 2>&1 &
+          "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 wait-for-device
+          for i in $(seq 1 120); do
+            if test "$("$ANDROID_HOME/platform-tools/adb" -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = '1'; then exit 0; fi
+            sleep 5
+          done
+          cat "$RUNNER_TEMP/emulator.log"
+          exit 1
+      - name: Run Android native storage, PDF, lifecycle and UI tests
+        run: ./gradlew :android:connectedDebugAndroidTest --no-daemon --console=plain
+      - name: Capture emulator image
+        if: always()
+        run: |
+          mkdir -p android/build/qa
+          "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 exec-out screencap -p > android/build/qa/emulator.png || true
+      - name: Preserve development APK and test evidence in an owner-visible draft
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python ../tools/publish_development_evidence.py --label android-${{ matrix.device }} --evidence android/build/outputs/androidTest-results --evidence android/build/reports/androidTests --evidence android/build/qa --asset "android/build/outputs/apk/debug/*.apk"
+      - name: Stop isolated emulator
+        if: always()
+        run: |
+          "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 emu kill || true
+  apple-reader:
+    needs: windows
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Read Windows conformance evidence from the private draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "field-clients-validation-${GITHUB_SHA:0:12}" --pattern windows-evidence.zip --dir validation-output
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          import zipfile
+          root=Path('validation-output')
+          with zipfile.ZipFile(root/'windows-evidence.zip') as z:
+              assert all(not n.startswith('/') and '..' not in Path(n).parts for n in z.namelist())
+              z.extractall(root)
+          PYTHON
+      - name: Regenerate deterministic fixtures with the unchanged Swift core
+        run: python3 tools/generate_cross_platform_fixtures.py
+      - name: Read Windows-exported packages with unchanged Swift reader
+        run: |
+          find validation-output -name 'kotlin-*.camreport' -exec /tmp/camerastats-fixture-tool verify {} \;
+          test "$(find validation-output -name 'kotlin-*.camreport' | wc -l | tr -d ' ')" = '2'
+      - name: Existing Apple regression tests
+        run: swift test --package-path app
