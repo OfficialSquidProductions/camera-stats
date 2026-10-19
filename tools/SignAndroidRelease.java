@@ -30,7 +30,7 @@ public final class SignAndroidRelease {
                 throw new IllegalStateException("Signed APK verification failed: "+result.getErrors());
             if (!Arrays.equals(result.getSignerCertificates().get(0).getEncoded(),chain.get(0).getEncoded())) throw new IllegalStateException("Unexpected signer");
             Files.move(temp,output,StandardCopyOption.ATOMIC_MOVE);
-            System.out.println("PASS: APK signatures verified (v1/v2/v3), one expected signer, minimum API 26.");
+            System.out.println("PASS: APK signatures verified (v2/v3), one expected signer, minimum API 26.");
             System.out.println("Public certificate SHA-256: "+HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(chain.get(0).getEncoded())));
         } finally {Files.deleteIfExists(temp);}
     }

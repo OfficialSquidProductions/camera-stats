@@ -132,6 +132,8 @@ jobs:
         run: |
           "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 emu kill || true
   apple-reader:
+    permissions:
+      contents: write # GitHub draft evidence requires push access; token remains ephemeral.
     needs: windows
     runs-on: macos-26
     timeout-minutes: 15

@@ -1,0 +1,81 @@
+name: Signed Android release verification
+on:
+  workflow_dispatch:
+    inputs:
+      draft_tag:
+        description: Owner-visible candidate draft tag
+        required: true
+        type: string
+      apk_sha256:
+        description: Exact signed APK SHA-256
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  signed-android:
+    permissions:
+      contents: write # GitHub requires push access to read draft releases; also stores anonymous QA.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [pixel_6, pixel_c]
+    defaults:
+      run:
+        working-directory: clients
+    env:
+      ANDROID_AVD_HOME: ${{ github.workspace }}/.camera-avd
+      ANDROID_USER_HOME: ${{ github.workspace }}/.camera-android
+      CAMERA_STATS_RELEASE_APK: android/build/candidate/Camera-Stats-Android-0.1.0-alpha.2.apk
+      EXPECTED_APK_SHA256: ${{ inputs.apk_sha256 }}
+      EVIDENCE_TAG: ${{ inputs.draft_tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Download only the exact approved candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -c 'import os,re; assert re.fullmatch(r"field-clients-validation-[0-9a-f]{12}",os.environ["EVIDENCE_TAG"]); assert re.fullmatch(r"[0-9a-f]{64}",os.environ["EXPECTED_APK_SHA256"])'
+          test "$(gh release view "$EVIDENCE_TAG" --json isDraft --jq .isDraft)" = true
+          mkdir -p android/build/candidate android/build/qa/signed-release
+          gh release download "$EVIDENCE_TAG" --pattern Camera-Stats-Android-0.1.0-alpha.2.apk --dir android/build/candidate
+          printf '%s  %s\n' "$EXPECTED_APK_SHA256" "$CAMERA_STATS_RELEASE_APK" | sha256sum -c -
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --min-sdk-version 26 --verbose --print-certs "$CAMERA_STATS_RELEASE_APK" > android/build/qa/signed-release/signature.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('android/build/qa/signed-release/signature.txt').read_text()
+          assert 'Signer #1 certificate SHA-256 digest: e3cfcfa90e61d5687ee6d4fab7b4153adf5eebdb0dbf26549a37c4c5a11ce83b' in text
+          assert 'Verified using v2 scheme (APK Signature Scheme v2): true' in text
+          assert 'Verified using v3 scheme (APK Signature Scheme v3): true' in text
+          PY
+      - name: Start isolated phone or tablet without accepting new SDK terms
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_AVD_HOME" "$ANDROID_USER_HOME"
+          if ! test -x "$ANDROID_HOME/emulator/emulator"; then timeout 12m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator </dev/null; fi
+          if ! test -d "$ANDROID_HOME/system-images/android-35/default/x86_64"; then timeout 12m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'system-images;android-35;default;x86_64' </dev/null; fi
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name camera-qa --path "$ANDROID_AVD_HOME/camera-qa.avd" --package 'system-images;android-35;default;x86_64' --device '${{ matrix.device }}'
+          if test -e /dev/kvm; then sudo setfacl -m u:$(id -u):rw /dev/kvm; fi
+          "$ANDROID_HOME/emulator/emulator" -avd camera-qa -port 5554 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 -cores 2 > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          trap 'cat "$RUNNER_TEMP/emulator.log" 2>/dev/null || true' EXIT
+          timeout 90s "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 wait-for-device
+          for i in $(seq 1 120); do
+            if test "$("$ANDROID_HOME/platform-tools/adb" -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Exercise the exact signed release
+        run: python3 ../tools/android_release_smoke.py
+      - name: Retain anonymous signed-release QA in draft
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 ../tools/publish_development_evidence.py --label signed-android-${{ matrix.device }} --evidence android/build/qa/signed-release
+      - name: Stop isolated emulator
+        if: always()
+        run: |
+          "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 emu kill || true
