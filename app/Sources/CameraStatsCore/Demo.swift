@@ -82,33 +82,101 @@ MAYA
 Now I am.
 
 """#
+    // Canonical planning fixture shared with Scenic and Production Desk.
+    static let demoScriptSHA256 = "84b4bea90b72a1d3d09be8925b07cdf696e9bc579386ed21c3255bb305336f87"
+    static let demoShotPlan = #"""
+FICTIONAL DEMO · shared shot plan
+Only 3A has completed takes; other shots remain planned.
+
+1A · A camera · 24mm · Wide · Tracking
+Station wagon follows the coastal road toward the lighthouse.
+Planned · 0 takes
+
+1B · B camera · 50mm · Medium · Static
+Maya and Eli react to the lighthouse in the mist.
+Planned · 0 takes
+
+2A · A camera · 35mm · Medium · Static
+Maya unfolds the road map beside Eli.
+Planned · 0 takes
+
+2B · B camera · 85mm · Insert · Static
+Red circle on the folded road map marks the lighthouse.
+Planned · 0 takes
+
+3A · A camera · 24mm · Wide · Static
+Station wagon stops at the foot of the lighthouse; Jonah waits.
+Done · 3 takes · circle 2
+
+3B · B camera · 85mm · Close-up · Static
+Jonah offers the brass key to Maya.
+Ready · 0 takes
+
+4A · A camera · 35mm · Medium wide · Tilt
+Follow Jonah and Maya ascending the winding stairwell.
+Planned · 0 takes
+
+4B · B camera · 85mm · Insert · Static
+Maya runs her hand along the worn stone.
+Planned · 0 takes
+
+5A · A camera · 50mm · Medium · Static
+Eli opens the wooden box as Maya watches.
+Planned · 0 takes
+
+5B · B camera · 85mm · Insert · Static
+Letter, photograph and compass inside the wooden box.
+Planned · 0 takes
+
+6A · A camera · 35mm · Medium wide · Static
+Maya and Jonah sit on the seawall above the tide.
+Planned · 0 takes
+
+6B · B camera · 85mm · Close-up · Static
+Maya listens as Jonah remembers her father.
+Planned · 0 takes
+
+7A · A camera · 85mm · Insert · Static
+Maya turns the brass key in the lighthouse mechanism.
+Planned · 0 takes
+
+7B · B camera · 50mm · Medium · Pan
+The lantern wakes; Maya sees the light return.
+Planned · 0 takes
+
+8A · A camera · 50mm · Medium · Static
+Eli closes the car door; Maya is ready to leave.
+Planned · 0 takes
+
+8B · B camera · 24mm · Wide · Pan
+The lighthouse beam sweeps the water behind the departing wagon.
+Planned · 0 takes
+
+"""#
     static func demo() -> Report {
         var r = Report.fixture()
         r.id = UUID().uuidString; r.entries = []; r.history = []; r.revision = 0
-        r.values["title"] = "The Last Light · DEMO"
+        r.values["title"] = "The Last Light · DEMO"; r.values["date"] = "2026-11-02"
         r.values["day"] = "01"; r.values["demoScript"] = demoScript
+        r.values["demoShotPlan"] = demoShotPlan; r.values["demoScriptSHA256"] = demoScriptSHA256
         r.values["director"] = "Demo director (fictional)"; r.values["dp"] = "Demo DP (fictional)"
         r.values["dit"] = "N/A — student covers all duties"
         r.values["cycle"] = "DEMO 01"; r.values["professor"] = "Demo instructor (fictional)"
         r.defaults["roll"] = "A001"; r.defaults["mag"] = "Demo SSD 01"
-        let descriptions = ["EXT. COASTAL ROAD — DAWN · Maya and Eli drive toward the lighthouse.", "INT. STATION WAGON — DAY · Maya unfolds the map; red circle marks the lighthouse.", "EXT. LIGHTHOUSE — DAY · Jonah greets Maya with the brass key.", "INT. LIGHTHOUSE STAIRWELL — DAY · Maya retraces her father's morning ritual.", "INT. LANTERN ROOM — DAY · Eli discovers the letter, photograph, and compass.", "EXT. LIGHTHOUSE — DUSK · Maya and Jonah talk on the seawall as the tide comes in.", "INT. LANTERN ROOM — NIGHT · Maya turns the brass key; the mechanism wakes.", "EXT. COASTAL ROAD — NIGHT · Maya and Eli look back at the lighthouse."]
-        for scene in 1...8 {
-            for take in 1...3 {
-                r.defaults["lens"] = scene == 2 || scene == 5 ? "50mm" : "35mm"
-                r.defaults["temperature"] = scene == 1 || scene == 8 ? "4300K / 0" : "5600K / 0"
-                let id = r.next(scene:String(scene),device:"Built-in demo fixture")
-                let i = r.entries.firstIndex{$0.id == id}!
-                r.entries[i].values["remarks"] = descriptions[scene-1] + (take == 1 ? " Wide master. Hold through the pause." : take == 2 ? " Medium coverage. Clean performance." : " Detail / alternate. Check continuity against master.")
-                r.entries[i].values["continuity"] = scene == 3 || scene == 7 ? "Keep the brass key in Maya's right hand; compare handover and lantern-room insert." : scene == 5 ? "Letter, photograph, compass in wooden box. Preserve prop positions between takes." : "Preserve eyelines and screen direction between Maya, Eli, and Jonah as applicable."
-                r.entries[i].values["dpNotes"] = take == 2 ? "DP select — fictional demo selection" : "Preserve soft coastal light; reference only."
-                r.entries[i].values["sound"] = "DEMO-S001 / scene-\(scene)-take-\(take)"
-                r.entries[i].reviewed = true
-                if take == 2 {r.entries[i].flags.insert("Circle")}
-                if scene == 1 || scene == 8 {r.entries[i].flags.insert("MOS")}
-                if scene == 7 && take == 3 {r.entries[i].flags.insert("Pickup")}
-            }
+        r.defaults["camera"] = "A"; r.defaults["lens"] = "24mm"
+        for take in 1...3 {
+            let id = r.next(scene:"3A",device:"Built-in demo fixture")
+            let i = r.entries.firstIndex{$0.id == id}!
+            r.entries[i].values["sharedSceneId"] = "55b74db4-37dc-582c-b730-b0385b83de6c"
+            r.entries[i].values["sharedShotId"] = "5cae5786-9218-597d-a7c0-e6bef7af8dcd"
+            r.entries[i].values["remarks"] = "FICTIONAL DEMO · 3A · Station wagon stops at the foot of the lighthouse; Jonah waits. Wide, static, tripod."
+            r.entries[i].values["continuity"] = "Jonah holds the brass key while Maya approaches. Match the handover in planned shot 3B."
+            r.entries[i].values["dpNotes"] = take == 2 ? "Circle 2 — same fictional select as Production Desk and Scenic." : "Preserve soft coastal light; fictional camera settings only."
+            r.entries[i].values["sound"] = "DEMO-S001 / 3A-take-\(take)"
+            r.entries[i].reviewed = true
+            if take == 2 { r.entries[i].flags.insert("Circle") }
         }
-        r.record("Created fictional The Last Light demo report. No footage is included.",device:"Built-in demo fixture")
+        r.record("Created fictional The Last Light report from shared fixture revision 1. No footage is included.",device:"Built-in demo fixture")
         return r
     }
 }

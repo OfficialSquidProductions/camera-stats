@@ -23,7 +23,7 @@ Source: full 29-page Camera Reporting Product Plan supplied in Library, Revision
 | NLE adapters | CSV clearly generic | Named Resolve/Avid/Premiere/FCP versions, real import and proxy-to-original relink/conform fixtures |
 | Scale | Core round-trip test with 1,000-entry day | End-to-end device entry/search latency, progressive indexing, 20,000-clip test on named devices |
 | Branding | Original green SP retained, exact suite credit, theme preference and palette assets | Final UI QA in both themes at all sizes; licensed suite display font choice; small-size icon validation |
-| Demo | Explicit separate fictional The Last Light report, 24 takes and full supplied sample script | Temporary testing feature; remove only when owner asks |
+| Demo | Explicit separate fictional The Last Light report, three takes for 3A, shared 16-shot plan, and full supplied sample script | Temporary testing feature; remove only when owner asks |
 | Releases | Local builds/tests and website draft | MIT confirmed, organization/admin verified; final source audit, signed archives, TestFlight owner-only delivery, verified download URLs/domain |
 
 The plan estimates 9–12 months with 4–6 contributors for the complete product. The current owner-test field alpha is a useful milestone, not completion of its RAW or production release gates. No claim of complete Stage 1 acceptance is made while required profile/merge/backup/platform work remains.

@@ -1,5 +1,8 @@
 import AppKit
 import Foundation
+guard CommandLine.arguments.count == 3 else {
+    fputs("Usage: swift tools/check_icons.swift <project-root> <suite-reference-1024.png>\n",stderr); exit(2)
+}
 let root = URL(fileURLWithPath:CommandLine.arguments[1])
 let ours = NSBitmapImageRep(data:try Data(contentsOf:root.appendingPathComponent("apple/Assets.xcassets/AppIcon.appiconset/mac-512-2.png")))!
 let ios = NSBitmapImageRep(data:try Data(contentsOf:root.appendingPathComponent("apple/Assets.xcassets/AppIcon.appiconset/ios-1024.png")))!

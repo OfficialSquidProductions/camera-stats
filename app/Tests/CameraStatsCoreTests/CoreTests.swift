@@ -6,7 +6,10 @@ final class CoreTests: XCTestCase {
     func testOwnerDemoUsesProductionDeskScriptAndIndependentIdentity() {
         let a = Report.demo(), b = Report.demo()
         XCTAssertTrue(a.values["title",default:""].contains("The Last Light")); XCTAssertNotEqual(a.id,b.id)
-        XCTAssertEqual(Set(a.active.compactMap{$0.values["scene"]}),Set((1...8).map(String.init)))
+        XCTAssertEqual(a.active.count,3); XCTAssertEqual(Set(a.active.compactMap{$0.values["scene"]}),["3A"])
+        XCTAssertEqual(a.active.filter{$0.flags.contains("Circle")}.map{$0.values["take"]},["2"])
+        XCTAssertEqual(a.values["demoScriptSHA256"],"84b4bea90b72a1d3d09be8925b07cdf696e9bc579386ed21c3255bb305336f87")
+        XCTAssertTrue(a.values["demoShotPlan",default:""].contains("8B · B camera · 24mm"))
         XCTAssertTrue(a.active.contains{$0.values["continuity",default:""].contains("brass key")})
     }
     func testDemoPDFExportAndRender() throws {

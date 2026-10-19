@@ -13,5 +13,5 @@ with tempfile.TemporaryDirectory(prefix='camerastats-crash-') as tmp:
     killed=subprocess.run([str(executable),'commit-and-kill',str(tmp/'fixture')],capture_output=True)
     assert killed.returncode == -signal.SIGKILL, f'Unexpected crash fixture result: {killed.returncode}'
     result=json.loads(subprocess.check_output([str(executable),'read',str(tmp/'fixture')]))
-    assert result == {'documents':1,'entries':24,'title':'Committed before SIGKILL'},result
-    print(json.dumps({'result':'PASS','committed_report_survived_SIGKILL':True,'entries_recovered':24,'uses_app_control':False}))
+    assert result == {'documents':1,'entries':3,'title':'Committed before SIGKILL'},result
+    print(json.dumps({'result':'PASS','committed_report_survived_SIGKILL':True,'entries_recovered':3,'uses_app_control':False}))

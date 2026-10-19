@@ -1,0 +1,480 @@
+{
+  "title": "The Last Light",
+  "fictional": true,
+  "revision": 1,
+  "scriptSHA256": "84b4bea90b72a1d3d09be8925b07cdf696e9bc579386ed21c3255bb305336f87",
+  "canonicalSource": "production-desk-store/windows-src/server.py:DEMO",
+  "characters": [
+    "MAYA",
+    "ELI",
+    "JONAH"
+  ],
+  "scenes": [
+    {
+      "sceneId": "ba1d9fa4-5095-5d48-8a9e-c62d5b26555f",
+      "scenicSceneId": "last-light-scene-1",
+      "number": "1",
+      "heading": "EXT. COASTAL ROAD - DAWN",
+      "description": "Maya and Eli drive toward the lighthouse.",
+      "scriptText": "1 EXT. COASTAL ROAD - DAWN\n\nA battered station wagon follows the coast. The lighthouse is a pin of light in the mist.\n\nMAYA\nWe should have left yesterday.\n\nELI\nAnd missed all this?",
+      "location": "North coast",
+      "characters": [
+        "MAYA",
+        "ELI"
+      ],
+      "props": [
+        "Station wagon"
+      ],
+      "shots": [
+        {
+          "id": "a14865f5-649e-590e-85d2-132c796e6f49",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "ba1d9fa4-5095-5d48-8a9e-c62d5b26555f",
+          "number": "1A",
+          "description": "Station wagon follows the coastal road toward the lighthouse.",
+          "size": "Wide",
+          "movement": "Tracking",
+          "camera": "A",
+          "lens": "24",
+          "equipment": "Small dolly",
+          "setupMinutes": 10,
+          "shootMinutes": 8,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Essential",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 1. Match action and prop continuity between setups."
+        },
+        {
+          "id": "4dcdd641-816d-5bb5-9a41-f99b0bfa2c77",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "ba1d9fa4-5095-5d48-8a9e-c62d5b26555f",
+          "number": "1B",
+          "description": "Maya and Eli react to the lighthouse in the mist.",
+          "size": "Medium",
+          "movement": "Static",
+          "camera": "B",
+          "lens": "50",
+          "equipment": "Tripod",
+          "setupMinutes": 15,
+          "shootMinutes": 10,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Preferred",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 1. Match action and prop continuity between setups."
+        }
+      ]
+    },
+    {
+      "sceneId": "d2a7f7e7-b739-5908-acac-0b80cd413afd",
+      "scenicSceneId": "last-light-scene-2",
+      "number": "2",
+      "heading": "INT. STATION WAGON - DAY",
+      "description": "An old map points to their destination.",
+      "scriptText": "2 INT. STATION WAGON - DAY\n\nMaya unfolds an old map. A red circle marks the lighthouse.\n\nMAYA\nThat's where he said he'd be.\n\nELI\nThen that's where we go.",
+      "location": "North coast",
+      "characters": [
+        "MAYA",
+        "ELI"
+      ],
+      "props": [
+        "Station wagon",
+        "Folded road map"
+      ],
+      "shots": [
+        {
+          "id": "139551f0-8621-5e96-8ad0-0b378e826da5",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "d2a7f7e7-b739-5908-acac-0b80cd413afd",
+          "number": "2A",
+          "description": "Maya unfolds the road map beside Eli.",
+          "size": "Medium",
+          "movement": "Static",
+          "camera": "A",
+          "lens": "35",
+          "equipment": "Tripod",
+          "setupMinutes": 10,
+          "shootMinutes": 8,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Essential",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 2. Match action and prop continuity between setups."
+        },
+        {
+          "id": "e134e10b-4145-59a1-a9ab-4a512dd52ebc",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "d2a7f7e7-b739-5908-acac-0b80cd413afd",
+          "number": "2B",
+          "description": "Red circle on the folded road map marks the lighthouse.",
+          "size": "Insert",
+          "movement": "Static",
+          "camera": "B",
+          "lens": "85",
+          "equipment": "Tripod",
+          "setupMinutes": 15,
+          "shootMinutes": 10,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Preferred",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 2. Match action and prop continuity between setups."
+        }
+      ]
+    },
+    {
+      "sceneId": "55b74db4-37dc-582c-b730-b0385b83de6c",
+      "scenicSceneId": "last-light-scene-3",
+      "number": "3",
+      "heading": "EXT. LIGHTHOUSE - DAY",
+      "description": "Jonah greets Maya with her father's key.",
+      "scriptText": "3 EXT. LIGHTHOUSE - DAY\n\nThe car rolls to a stop. JONAH waits at the foot of the lighthouse, holding a brass key.\n\nJONAH\nI wasn't sure you'd come.\n\nMAYA\nNeither was I.",
+      "location": "Point Harbor lighthouse",
+      "characters": [
+        "MAYA",
+        "JONAH"
+      ],
+      "props": [
+        "Brass key",
+        "Station wagon"
+      ],
+      "shots": [
+        {
+          "id": "5cae5786-9218-597d-a7c0-e6bef7af8dcd",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "55b74db4-37dc-582c-b730-b0385b83de6c",
+          "number": "3A",
+          "description": "Station wagon stops at the foot of the lighthouse; Jonah waits.",
+          "size": "Wide",
+          "movement": "Static",
+          "camera": "A",
+          "lens": "24",
+          "equipment": "Tripod",
+          "setupMinutes": 10,
+          "shootMinutes": 8,
+          "actualMinutes": 20,
+          "status": "Done",
+          "takes": 3,
+          "circleTake": "2",
+          "priority": "Essential",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 3. Sample completed take data for testing."
+        },
+        {
+          "id": "f67d6472-536a-5a83-9269-0dc917cd337b",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "55b74db4-37dc-582c-b730-b0385b83de6c",
+          "number": "3B",
+          "description": "Jonah offers the brass key to Maya.",
+          "size": "Close-up",
+          "movement": "Static",
+          "camera": "B",
+          "lens": "85",
+          "equipment": "Tripod",
+          "setupMinutes": 15,
+          "shootMinutes": 10,
+          "actualMinutes": null,
+          "status": "Ready",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Preferred",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 3. Match action and prop continuity between setups."
+        }
+      ]
+    },
+    {
+      "sceneId": "793ec520-7f6d-510b-abf2-0139145a8d40",
+      "scenicSceneId": "last-light-scene-4",
+      "number": "4",
+      "heading": "INT. LIGHTHOUSE STAIRWELL - DAY",
+      "description": "Maya retraces her father's morning ritual.",
+      "scriptText": "4 INT. LIGHTHOUSE STAIRWELL - DAY\n\nJonah leads Maya up a winding staircase. She runs a hand along the worn stone.\n\nJONAH\nOne hundred and twelve steps. Your father counted every morning.\n\nMAYA\nOf course he did.",
+      "location": "Point Harbor lighthouse",
+      "characters": [
+        "MAYA",
+        "JONAH"
+      ],
+      "props": [],
+      "shots": [
+        {
+          "id": "364f91ef-cd5e-5682-8827-90ad101ed3a4",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "793ec520-7f6d-510b-abf2-0139145a8d40",
+          "number": "4A",
+          "description": "Follow Jonah and Maya ascending the winding stairwell.",
+          "size": "Medium wide",
+          "movement": "Tilt",
+          "camera": "A",
+          "lens": "35",
+          "equipment": "Tripod",
+          "setupMinutes": 10,
+          "shootMinutes": 8,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Essential",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 4. Match action and prop continuity between setups."
+        },
+        {
+          "id": "811b152c-bd95-50ee-876b-fda723ccdcbe",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "793ec520-7f6d-510b-abf2-0139145a8d40",
+          "number": "4B",
+          "description": "Maya runs her hand along the worn stone.",
+          "size": "Insert",
+          "movement": "Static",
+          "camera": "B",
+          "lens": "85",
+          "equipment": "Tripod",
+          "setupMinutes": 15,
+          "shootMinutes": 10,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Preferred",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 4. Match action and prop continuity between setups."
+        }
+      ]
+    },
+    {
+      "sceneId": "169ceffa-c074-5d74-aa55-35b28fd2364f",
+      "scenicSceneId": "last-light-scene-5",
+      "number": "5",
+      "heading": "INT. LANTERN ROOM - DAY",
+      "description": "Eli discovers a letter addressed to Maya.",
+      "scriptText": "5 INT. LANTERN ROOM - DAY\n\nEli opens a wooden box. Inside: a letter, a photograph, and a compass.\n\nELI\nThis has your name on it.\n\nMAYA\nLet me see.",
+      "location": "Point Harbor lighthouse",
+      "characters": [
+        "MAYA",
+        "ELI"
+      ],
+      "props": [
+        "Wooden box · planning footprint",
+        "Letter",
+        "Photograph",
+        "Compass"
+      ],
+      "shots": [
+        {
+          "id": "96eeffdb-dcd9-5ff9-9ae5-55533184eb31",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "169ceffa-c074-5d74-aa55-35b28fd2364f",
+          "number": "5A",
+          "description": "Eli opens the wooden box as Maya watches.",
+          "size": "Medium",
+          "movement": "Static",
+          "camera": "A",
+          "lens": "50",
+          "equipment": "Tripod",
+          "setupMinutes": 10,
+          "shootMinutes": 8,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Essential",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 5. Match action and prop continuity between setups."
+        },
+        {
+          "id": "33fd8689-5ddd-58b9-bf05-cd42c26a5a93",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "169ceffa-c074-5d74-aa55-35b28fd2364f",
+          "number": "5B",
+          "description": "Letter, photograph and compass inside the wooden box.",
+          "size": "Insert",
+          "movement": "Static",
+          "camera": "B",
+          "lens": "85",
+          "equipment": "Tripod",
+          "setupMinutes": 15,
+          "shootMinutes": 10,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Preferred",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 5. Match action and prop continuity between setups."
+        }
+      ]
+    },
+    {
+      "sceneId": "bf96202a-59ce-5c23-b65f-dcfe489b6f90",
+      "scenicSceneId": "last-light-scene-6",
+      "number": "6",
+      "heading": "EXT. LIGHTHOUSE - DUSK",
+      "description": "Maya and Jonah talk as the tide comes in.",
+      "scriptText": "6 EXT. LIGHTHOUSE - DUSK\n\nMaya and Jonah sit on the seawall. The tide comes in below them.\n\nMAYA\nHow long do you think he waited?\n\nJONAH\nAs long as he needed to.",
+      "location": "Point Harbor lighthouse",
+      "characters": [
+        "MAYA",
+        "JONAH"
+      ],
+      "props": [
+        "Seawall · planning footprint"
+      ],
+      "shots": [
+        {
+          "id": "1cb40497-160d-58d7-bc86-b3fcc71cc682",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "bf96202a-59ce-5c23-b65f-dcfe489b6f90",
+          "number": "6A",
+          "description": "Maya and Jonah sit on the seawall above the tide.",
+          "size": "Medium wide",
+          "movement": "Static",
+          "camera": "A",
+          "lens": "35",
+          "equipment": "Tripod",
+          "setupMinutes": 10,
+          "shootMinutes": 8,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Essential",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 6. Match action and prop continuity between setups."
+        },
+        {
+          "id": "a3978b15-2810-5244-bce0-7b3e39442af1",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "bf96202a-59ce-5c23-b65f-dcfe489b6f90",
+          "number": "6B",
+          "description": "Maya listens as Jonah remembers her father.",
+          "size": "Close-up",
+          "movement": "Static",
+          "camera": "B",
+          "lens": "85",
+          "equipment": "Tripod",
+          "setupMinutes": 15,
+          "shootMinutes": 10,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Preferred",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 6. Match action and prop continuity between setups."
+        }
+      ]
+    },
+    {
+      "sceneId": "2ae46c42-1587-5533-b5fc-d3e020fc02a4",
+      "scenicSceneId": "last-light-scene-7",
+      "number": "7",
+      "heading": "INT. LANTERN ROOM - NIGHT",
+      "description": "Maya brings the lighthouse back to life.",
+      "scriptText": "7 INT. LANTERN ROOM - NIGHT\n\nMaya turns the brass key. The old mechanism wakes with a low, steady hum.\n\nMAYA\nThere you are.",
+      "location": "Point Harbor lighthouse",
+      "characters": [
+        "MAYA"
+      ],
+      "props": [
+        "Brass key"
+      ],
+      "shots": [
+        {
+          "id": "52039de9-c442-5118-b744-4d675c96e246",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "2ae46c42-1587-5533-b5fc-d3e020fc02a4",
+          "number": "7A",
+          "description": "Maya turns the brass key in the lighthouse mechanism.",
+          "size": "Insert",
+          "movement": "Static",
+          "camera": "A",
+          "lens": "85",
+          "equipment": "Tripod",
+          "setupMinutes": 10,
+          "shootMinutes": 8,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Essential",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 7. Match action and prop continuity between setups."
+        },
+        {
+          "id": "6a2935cf-af28-5575-95e5-5e3e809b4585",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "2ae46c42-1587-5533-b5fc-d3e020fc02a4",
+          "number": "7B",
+          "description": "The lantern wakes; Maya sees the light return.",
+          "size": "Medium",
+          "movement": "Pan",
+          "camera": "B",
+          "lens": "50",
+          "equipment": "Tripod",
+          "setupMinutes": 15,
+          "shootMinutes": 10,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Preferred",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 7. Match action and prop continuity between setups."
+        }
+      ]
+    },
+    {
+      "sceneId": "db24e64c-7203-5aef-a7b3-88a3ee30956b",
+      "scenicSceneId": "last-light-scene-8",
+      "number": "8",
+      "heading": "EXT. COASTAL ROAD - NIGHT",
+      "description": "Maya and Eli leave the coast behind.",
+      "scriptText": "8 EXT. COASTAL ROAD - NIGHT\n\nEli closes the car door. They look back. The lighthouse sweeps across the water.\n\nELI\nReady?\n\nMAYA\nNow I am.",
+      "location": "North coast",
+      "characters": [
+        "MAYA",
+        "ELI"
+      ],
+      "props": [
+        "Station wagon"
+      ],
+      "shots": [
+        {
+          "id": "b4e9db7d-afae-5267-b829-4adc33382be6",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "db24e64c-7203-5aef-a7b3-88a3ee30956b",
+          "number": "8A",
+          "description": "Eli closes the car door; Maya is ready to leave.",
+          "size": "Medium",
+          "movement": "Static",
+          "camera": "A",
+          "lens": "50",
+          "equipment": "Tripod",
+          "setupMinutes": 10,
+          "shootMinutes": 8,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Essential",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 8. Match action and prop continuity between setups."
+        },
+        {
+          "id": "57b5a9a6-a6bf-52a8-8d98-3fd4dfb53f9f",
+          "created": "2026-11-02T12:00:00.000Z",
+          "sceneId": "db24e64c-7203-5aef-a7b3-88a3ee30956b",
+          "number": "8B",
+          "description": "The lighthouse beam sweeps the water behind the departing wagon.",
+          "size": "Wide",
+          "movement": "Pan",
+          "camera": "B",
+          "lens": "24",
+          "equipment": "Tripod",
+          "setupMinutes": 15,
+          "shootMinutes": 10,
+          "actualMinutes": null,
+          "status": "Planned",
+          "takes": 0,
+          "circleTake": "",
+          "priority": "Preferred",
+          "notes": "FICTIONAL DEMO · The Last Light · scene 8. Match action and prop continuity between setups."
+        }
+      ]
+    }
+  ]
+}

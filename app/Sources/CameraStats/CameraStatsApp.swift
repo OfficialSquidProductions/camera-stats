@@ -106,6 +106,7 @@ struct Workspace: View {
                 Text("Demo data is fictional. No camera footage or camera integration is included.").font(.caption).foregroundStyle(.secondary)
                 if let script = store.report.values["demoScript"] { NavigationLink("Read the demo script") { ScrollView { Text(script).font(.system(.body,design:.monospaced)).textSelection(.enabled).frame(maxWidth:800,alignment:.leading).padding() }.navigationTitle("The Last Light · Demo") } }
             }
+            if let plan = store.report.values["demoShotPlan"] { Section("Shared demo shots") { NavigationLink("Read the 16-shot plan") { ScrollView { Text(plan).textSelection(.enabled).frame(maxWidth:800,alignment:.leading).padding() }.navigationTitle("The Last Light · Shots") } } }
             Section("Workspace preferences") {
                 Picker("Production profile",selection:Binding(get:{store.report.profile},set:{v in store.change("Changed profile; all values retained"){$0.profile = v}})) { ForEach(Schema.profiles,id:\.self) { Text($0) } }
                 Picker("Detail",selection:$detail) { ForEach(["Quick","Standard","Full"],id:\.self) { Text($0) } }
