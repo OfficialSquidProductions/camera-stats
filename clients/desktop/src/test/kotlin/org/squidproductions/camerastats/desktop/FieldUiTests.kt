@@ -32,6 +32,10 @@ class FieldUiTests {
             ui.onNodeWithText("4 takes · 1 outstanding requirements").assertExists()
             assertEquals("4",state.report.active.last().values["take"]);assertEquals("24mm",state.report.active.last().values["lens"])
             assertEquals(4,repo.load(state.slot).report.active.size)
+            ui.onNodeWithText("Today",useUnmergedTree=false).performClick()
+            ui.onNodeWithText("Open-source notices").performScrollTo().performClick()
+            ui.onNodeWithText("CAMERA STATS — OPEN-SOURCE NOTICES",substring=true).assertIsDisplayed()
+            ui.onNodeWithText("Done",substring=false).performClick()
         } finally {repo.close()}
     }
 }

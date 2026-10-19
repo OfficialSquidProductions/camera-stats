@@ -39,6 +39,7 @@ class DesktopGateway(private val root:Path):PlatformGateway {
     var failure:(Exception)->Unit={}
     private val prefs=Properties().apply {runCatching {Files.newInputStream(root.resolve("preferences.properties")).use {load(it)}}}
     override fun demo():Report=Exchange.decode(resource("demo-report.json"))
+    override fun notices():String=resource("open-source-notices.txt").toString(Charsets.UTF_8)
     override fun preference(key:String,fallback:String):String=prefs.getProperty(key,fallback)
     override fun preference(key:String,value:String,write:Boolean) {prefs.setProperty(key,value);runCatching {Files.createDirectories(root);Files.newOutputStream(root.resolve("preferences.properties")).use {prefs.store(it,"Camera Stats local display preferences")}}}
     override fun importFile(complete:(ByteArray?)->Unit) {SwingUtilities.invokeLater {
@@ -83,5 +84,7 @@ fun packagedSelfTest(root:Path) {
     check(Exchange.read(Files.readAllBytes(root.resolve("package-test.camreport"))).report==restored)
     val pdf=gateway.pdf(restored);check(pdf.take(5).toByteArray().toString(Charsets.US_ASCII)=="%PDF-");Files.write(root.resolve("package-test.pdf"),pdf)
     check(gateway.brand.width>0 && gateway.icon.width==256)
+    check(gateway.notices().contains("Independent JPEG Group"))
+    check(Files.isDirectory(Path.of(System.getProperty("java.home"),"legal"))) {"Bundled runtime license files are missing"}
     Files.writeString(root.resolve("PASS.txt"),"PASS: bundled JVM, native SQLite durable reopen, camreport roundtrip, PDF rendering and suite image resources.\n")
 }

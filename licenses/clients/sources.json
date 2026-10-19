@@ -1,0 +1,114 @@
+{
+  "Kotlin-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/JetBrains/kotlin/v2.1.21/license/LICENSE.txt",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "Compose-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/JetBrains/compose-multiplatform/v1.8.2/LICENSE.txt",
+    "sha256": "f9a85c61ba4fe8bacc300053b3384b5fc7d9f585a08dc7b9a465b7c0716c4f50"
+  },
+  "Serialization-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/Kotlin/kotlinx.serialization/v1.8.1/LICENSE.txt",
+    "sha256": "c5accbbd8546e94c34aed24afe689a617627d18eed5a6c48277e48db57c23851"
+  },
+  "Skiko-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/JetBrains/skiko/v0.9.4.2/LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "Skiko-NOTICE.txt": {
+    "source": "https://raw.githubusercontent.com/JetBrains/skiko/v0.9.4.2/NOTICE",
+    "sha256": "35dd077c24768b53625101cfcc0ad853ae7e2abc08bd2a111a0267760d1406d8"
+  },
+  "Skia-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/JetBrains/skia/a00c390e98/LICENSE",
+    "sha256": "5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd"
+  },
+  "Skia-expat-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/JetBrains/skia/a00c390e98/third_party/expat/LICENSE",
+    "sha256": "cca48bacd6e7ed63f00b42a346bcc8549a460b41efe75d93db350fc882f54dca"
+  },
+  "Skia-harfbuzz-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/JetBrains/skia/a00c390e98/third_party/harfbuzz/LICENSE",
+    "sha256": "cca48bacd6e7ed63f00b42a346bcc8549a460b41efe75d93db350fc882f54dca"
+  },
+  "Skia-wuffs-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/JetBrains/skia/a00c390e98/third_party/wuffs/LICENSE",
+    "sha256": "e59bb5c5c6ba426a9ac4ba9fe667ad14c5166b12aa25be8af1d122b14fbe2e36"
+  },
+  "Skia-ICU-LICENSE.txt": {
+    "source": "https://chromium.googlesource.com/chromium/deps/icu/+/364118a1d9da24bb5b770ac3d762ac144d6da5a4/LICENSE?format=TEXT",
+    "sha256": "17510cf7a58b4879b887ec05a45d72cf1b73544dd9ec7e72f20110ed104229ee"
+  },
+  "Skia-libjpeg-turbo-LICENSE.md": {
+    "source": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo/+/ccfbe1c82a3b6dbe8647ceb36a3f9ee711fba3cf/LICENSE.md?format=TEXT",
+    "sha256": "60c756742db3ad1913304e8b13f0e86e22e51adb50cc0b3333c163f7e45ceec1"
+  },
+  "Skia-libjpeg-turbo-README.ijg.txt": {
+    "source": "https://chromium.googlesource.com/chromium/deps/libjpeg_turbo/+/ccfbe1c82a3b6dbe8647ceb36a3f9ee711fba3cf/README.ijg?format=TEXT",
+    "sha256": "4b7b9f8c03bb8d60270dfd12684e70ab21e4abfd27e73905cd1a7c4cae6f5cdb"
+  },
+  "Skia-D3D12MemoryAllocator-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/169895d529dfce00390a20e69c2f516066fe7a3b/LICENSE.txt",
+    "sha256": "e078ee4f8c5ed0673f4d93b5318557eb8b4e0d7dbccef2ab45c763c7693f0f37"
+  },
+  "Skia-SPIRV-Cross-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/KhronosGroup/SPIRV-Cross/b8fcf307f1f347089e3c46eb4451d27f32ebc8d3/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "Graphics2D-LICENSE.txt": {
+    "source": "https://raw.githubusercontent.com/rototor/pdfbox-graphics2d/pdfboxgraphics2d-parent-3.0.5/LICENSE-2.0.txt",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "Skia-package-include-third_party-vulkan-LICENSE.txt": {
+    "source": "https://github.com/JetBrains/skia-pack/releases/tag/m132-a00c390e98-1 :: include/third_party/vulkan/LICENSE",
+    "sha256": "e59bb5c5c6ba426a9ac4ba9fe667ad14c5166b12aa25be8af1d122b14fbe2e36"
+  },
+  "Skia-package-third_party-externals-angle2-LICENSE.txt": {
+    "source": "https://github.com/JetBrains/skia-pack/releases/tag/m132-a00c390e98-1 :: third_party/externals/angle2/LICENSE",
+    "sha256": "bf4da21bd20bcfb5b60b7ecc67fa864a79be049e21d6178076887f178dd6c71a"
+  },
+  "Skia-package-third_party-externals-libpng-LICENSE.txt": {
+    "source": "https://github.com/JetBrains/skia-pack/releases/tag/m132-a00c390e98-1 :: third_party/externals/libpng/LICENSE",
+    "sha256": "7317e078e2d3b5d7ba5a6159e650945153262b44b76f6700f8e9edb261c5143e"
+  },
+  "Skia-package-third_party-externals-libwebp-COPYING.txt": {
+    "source": "https://github.com/JetBrains/skia-pack/releases/tag/m132-a00c390e98-1 :: third_party/externals/libwebp/COPYING",
+    "sha256": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf"
+  },
+  "Skia-package-third_party-externals-harfbuzz-COPYING.txt": {
+    "source": "https://github.com/JetBrains/skia-pack/releases/tag/m132-a00c390e98-1 :: third_party/externals/harfbuzz/COPYING",
+    "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64"
+  },
+  "Skia-package-third_party-externals-swiftshader-LICENSE.txt.txt": {
+    "source": "https://github.com/JetBrains/skia-pack/releases/tag/m132-a00c390e98-1 :: third_party/externals/swiftshader/LICENSE.txt",
+    "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+  },
+  "Skia-package-third_party-externals-zlib-LICENSE.txt": {
+    "source": "https://github.com/JetBrains/skia-pack/releases/tag/m132-a00c390e98-1 :: third_party/externals/zlib/LICENSE",
+    "sha256": "e1cfcc55c325b3f78cf55df9664abaa066e2271dffe8213347d9fccdfbac8f2c"
+  },
+  "pdfbox-3.0.5-META-INF-LICENSE.txt": {
+    "source": "Maven Central org.apache.pdfbox/pdfbox/3.0.5 :: META-INF/LICENSE",
+    "sha256": "88a76449ffaf7d35d5973e72313df0059956b42608ef017a8f4529a208683c1e"
+  },
+  "pdfbox-3.0.5-META-INF-NOTICE.txt": {
+    "source": "Maven Central org.apache.pdfbox/pdfbox/3.0.5 :: META-INF/NOTICE",
+    "sha256": "9f3999d75a345db012a1b38b18f39276807cd9296ca983db7e3eeebd78c5cd60"
+  },
+  "fontbox-3.0.5-META-INF-LICENSE.txt": {
+    "source": "Maven Central org.apache.pdfbox/fontbox/3.0.5 :: META-INF/LICENSE",
+    "sha256": "06782ab48ba2985d9a37a005fce086b22eaed85d77644fd7ab91299fafd59118"
+  },
+  "fontbox-3.0.5-META-INF-NOTICE.txt": {
+    "source": "Maven Central org.apache.pdfbox/fontbox/3.0.5 :: META-INF/NOTICE",
+    "sha256": "4848a5bc62fbe8a6422fbb225a9a377e5e8c57fc2a98137ac1bf0fd87ebb7bfe"
+  },
+  "sqlite-jdbc-3.49.1.0-META-INF-maven-org.xerial-sqlite-jdbc-LICENSE.txt": {
+    "source": "Maven Central org.xerial/sqlite-jdbc/3.49.1.0 :: META-INF/maven/org.xerial/sqlite-jdbc/LICENSE",
+    "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+  },
+  "sqlite-jdbc-3.49.1.0-META-INF-maven-org.xerial-sqlite-jdbc-LICENSE.zentus.txt": {
+    "source": "Maven Central org.xerial/sqlite-jdbc/3.49.1.0 :: META-INF/maven/org.xerial/sqlite-jdbc/LICENSE.zentus",
+    "sha256": "89167dab92289c7e5e2b65b044f0856b703d05e5d5e35c3548e73d9c7d2f5048"
+  }
+}

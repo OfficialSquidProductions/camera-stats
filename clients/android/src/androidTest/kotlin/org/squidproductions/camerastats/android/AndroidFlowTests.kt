@@ -41,8 +41,16 @@ class AndroidFlowTests {
         capture("today-landscape")
     }
     private fun capture(name:String) {
-        ui.waitForIdle();val bitmap=ui.onRoot().captureToImage().asAndroidBitmap();val root=File(ui.activity.getExternalFilesDir(null),"qa").apply {mkdirs()}
-        File(root,"$name.png").outputStream().use {bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}
+        ui.waitForIdle();val bitmap=ui.onRoot().captureToImage().asAndroidBitmap()
+        writeQa("$name.png","image/png") {bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}
+    }
+    // Test-only MediaStore outputs survive AGP uninstalling the tested app on the isolated CI VM.
+    private fun writeQa(name:String,mime:String,write:(java.io.OutputStream)->Unit) {
+        val resolver=ui.activity.contentResolver
+        val values=ContentValues().apply {put(MediaStore.Downloads.DISPLAY_NAME,name);put(MediaStore.Downloads.MIME_TYPE,mime);put(MediaStore.Downloads.RELATIVE_PATH,"Download/CameraStatsQA");put(MediaStore.Downloads.IS_PENDING,1)}
+        val uri=resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values)!!
+        resolver.openOutputStream(uri)!!.use(write)
+        resolver.update(uri,ContentValues().apply {put(MediaStore.Downloads.IS_PENDING,0)},null,null)
     }
     @Test fun storageAccessResultCallbacksExportAndImportActualBytes() {
         ui.activityRule.scenario.onActivity {it.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_PORTRAIT}
@@ -64,12 +72,14 @@ class AndroidFlowTests {
     @Test fun nativePdfAndPortableSaveRoundtrip() {
         val context=ui.activity;val report=context.demo().separateDemo();val pdf=context.pdf(report)
         assertTrue(pdf.copyOfRange(0,5).toString(Charsets.US_ASCII)=="%PDF-");assertTrue(pdf.size>1000)
-        val qa=File(context.getExternalFilesDir(null),"qa").apply {mkdirs()};val pdfFile=File(qa,"android-demo.pdf").apply {writeBytes(pdf)}
+        assertTrue(context.notices().contains("Independent JPEG Group"))
+        val pdfFile=File(context.cacheDir,"android-demo.pdf").apply {writeBytes(pdf)}
+        writeQa("android-demo.pdf","application/pdf") {it.write(pdf)}
         android.os.ParcelFileDescriptor.open(pdfFile,android.os.ParcelFileDescriptor.MODE_READ_ONLY).use {descriptor ->android.graphics.pdf.PdfRenderer(descriptor).use {renderer ->
             assertTrue(renderer.pageCount>1)
             for(index in 0 until renderer.pageCount) renderer.openPage(index).use {page ->
                 assertEquals(842,page.width);assertEquals(595,page.height);val bitmap=Bitmap.createBitmap(page.width,page.height,Bitmap.Config.ARGB_8888);bitmap.eraseColor(android.graphics.Color.WHITE);page.render(bitmap,null,null,android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                File(qa,"android-pdf-page-${index+1}.png").outputStream().use {bitmap.compress(Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()
+                writeQa("android-pdf-page-${index+1}.png","image/png") {bitmap.compress(Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()
             }
         }}
         val exported=Exchange.export(report,"Android instrumented test");assertEquals(report,Exchange.read(exported).report)

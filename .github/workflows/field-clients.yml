@@ -2,7 +2,7 @@ name: Field clients
 on:
   push:
     branches: [main, windows-android-field-alpha]
-    paths: ['clients/**', 'fixtures/**', 'tools/fixtures/**', 'tools/generate_cross_platform_fixtures.py', '.github/workflows/field-clients.yml']
+    paths: ['clients/**', 'fixtures/**', 'licenses/clients/**', 'tools/fixtures/**', 'tools/*client*', 'tools/generate_cross_platform_fixtures.py', 'tools/publish_development_evidence.py', '.github/workflows/field-clients.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -30,7 +30,9 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Core, persistence, native PDF and Compose UI tests
-        run: ./gradlew.bat -PskipAndroid=true :core:test :jdbc:test :desktop:test --no-daemon --console=plain
+        run: |
+          python ../tools/build_client_notices.py
+          ./gradlew.bat -PskipAndroid=true :core:test :jdbc:test :desktop:test --no-daemon --console=plain
       - name: Package bundled-runtime Windows clients
         run: ./gradlew.bat -PskipAndroid=true :desktop:createDistributable :desktop:packageExe :desktop:packageMsi --no-daemon --console=plain
       - name: Verify the packaged Windows runtime
@@ -41,6 +43,20 @@ jobs:
           New-Item -ItemType Directory -Force -Path $qa | Out-Null
           $process = Start-Process -FilePath $launchers[0].FullName -ArgumentList '--self-test', ('"' + $qa + '"') -Wait -PassThru
           if ($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $qa 'PASS.txt'))) { throw "Packaged-runtime check failed" }
+          Get-Content (Join-Path $qa 'PASS.txt')
+      - name: Install and exercise the MSI on the isolated Windows runner
+        run: |
+          $msi = @(Get-ChildItem desktop/build/compose/binaries/main/msi -Filter '*.msi')
+          if ($msi.Count -ne 1) { throw 'Expected one MSI' }
+          $log = Join-Path (Get-Location) 'desktop/build/qa/msi-install.log'
+          $install = Start-Process msiexec.exe -ArgumentList '/i', ('"' + $msi[0].FullName + '"'), '/qn', '/norestart', '/l*v', ('"' + $log + '"') -Wait -PassThru
+          if ($install.ExitCode -notin 0,3010) { throw "MSI installation failed: $($install.ExitCode)" }
+          $launcher = Join-Path $env:ProgramFiles 'Camera Stats/Camera Stats.exe'
+          if (!(Test-Path $launcher)) { throw 'Installed launcher is missing' }
+          $qa = Join-Path (Get-Location) 'desktop/build/qa/installed-runtime'
+          New-Item -ItemType Directory -Force -Path $qa | Out-Null
+          $process = Start-Process $launcher -ArgumentList '--self-test', ('"' + $qa + '"') -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $qa 'PASS.txt'))) { throw 'Installed runtime check failed' }
           Get-Content (Join-Path $qa 'PASS.txt')
       - name: Preserve development packages and QA in an owner-visible draft
         if: always()
@@ -75,7 +91,8 @@ jobs:
       - name: Verify preinstalled SDK and build test APKs
         run: |
           test -d "$ANDROID_HOME/platforms/android-35"
-          ./gradlew :android:assembleDebug :android:assembleDebugAndroidTest --no-daemon --console=plain
+          python3 ../tools/build_client_notices.py
+          ./gradlew :android:assembleDebug :android:assembleDebugAndroidTest :android:assembleRelease --no-daemon --console=plain
       - name: Prepare AOSP emulator without accepting new licenses
         run: |
           set -euo pipefail
@@ -103,19 +120,20 @@ jobs:
           mkdir -p android/build/qa
           cp "$RUNNER_TEMP/emulator.log" android/build/qa/emulator.log || true
           "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 pull /sdcard/Android/data/org.squidproductions.camerastats/files/qa/. android/build/qa/ || true
+          "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 pull /sdcard/Download/CameraStatsQA/. android/build/qa/ || true
           "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 exec-out screencap -p > android/build/qa/emulator.png || true
       - name: Preserve development APK and test evidence in an owner-visible draft
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python ../tools/publish_development_evidence.py --label android-${{ matrix.device }} --evidence android/build/outputs/androidTest-results --evidence android/build/reports/androidTests --evidence android/build/qa --asset "android/build/outputs/apk/debug/*.apk"
+        run: python ../tools/publish_development_evidence.py --label android-${{ matrix.device }} --evidence android/build/outputs/androidTest-results --evidence android/build/reports/androidTests --evidence android/build/qa --asset "android/build/outputs/apk/debug/*.apk" --asset "android/build/outputs/apk/release/*unsigned.apk"
       - name: Stop isolated emulator
         if: always()
         run: |
           "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 emu kill || true
   apple-reader:
     needs: windows
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

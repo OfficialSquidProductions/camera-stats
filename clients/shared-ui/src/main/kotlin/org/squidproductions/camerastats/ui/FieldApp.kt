@@ -20,6 +20,7 @@ interface PlatformGateway {
     val label:String
     val brand:ImageBitmap
     fun demo():Report
+    fun notices():String
     fun importFile(complete:(ByteArray?)->Unit)
     fun exportFile(name:String,mime:String,bytes:ByteArray,complete:()->Unit)
     fun pdf(report:Report):ByteArray
@@ -80,6 +81,7 @@ private val Green=Color(0xff237b20)
     val palette=if(dark) darkColorScheme(primary=Color(0xff95df8d),secondary=Color(0xff95df8d),secondaryContainer=Color(0xff34452f),onSecondaryContainer=Color(0xffc3efbc),outline=Color(0xff8d7784),outlineVariant=Color(0xff49333f),background=Color(0xff191419),surface=Color(0xff251d23),onSurface=Color(0xfff3eaf0)) else lightColorScheme(primary=Green,secondary=Green,secondaryContainer=Color(0xffdaeed6),onSecondaryContainer=Color(0xff1c4618),background=Color(0xfffaf8f9),surface=Color.White)
     var page by remember {mutableStateOf("Today")};var detail by remember {mutableStateOf(host.preference("detail","Standard"))}
     var documentPicker by remember {mutableStateOf(false)};var script by remember {mutableStateOf<String?>(null)}
+    var notices by remember {mutableStateOf<String?>(null)}
     MaterialTheme(colorScheme=palette) {
         Surface(Modifier.fillMaxSize(),color=palette.background) {
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -113,6 +115,7 @@ private val Green=Color(0xff237b20)
                                     Choice("Appearance",theme,listOf("System","Light","Dark")) {v -> theme=v;host.preference("theme",v,true)}
                                     Schema.positions.forEach {position -> Check(position,position in state.report.positions) {on -> state.change("Changed responsibility view") {r ->r.copy(positions=if(on) (r.positions+position).distinct() else r.positions-position)}} }
                                     Text("Positions describe responsibilities. Every report group remains in Review.",style=MaterialTheme.typography.bodySmall)
+                                    TextButton(onClick={state.attempt {notices=host.notices()}}) {Text("Open-source notices")}
                                 }
                                 Section("Project / crew · complete report") {Fields(Schema.project,state.report.values) {k,v ->state.change("Edited project field") {it.copy(values=it.values+(k to v))}} }
                                 Section("Defaults for future takes") {Text("Earlier takes keep their recorded settings.",style=MaterialTheme.typography.bodySmall);Fields(Schema.settings,state.report.defaults) {k,v ->state.change("Changed defaults for future takes") {it.copy(defaults=it.defaults+(k to v))}} }
@@ -158,6 +161,7 @@ private val Green=Color(0xff237b20)
                 Text("Opening separately preserves the current local document. Omissions never mean deletion.",style=MaterialTheme.typography.bodySmall)
             }},confirmButton={TextButton(onClick={state.pending=null}) {Text("Cancel")}})
         }
+        notices?.let {text ->AlertDialog(onDismissRequest={notices=null},title={Text("Open-source notices")},text={LazyColumn(Modifier.heightIn(max=550.dp)) {items(text.split("\n\n")) {paragraph ->Text(paragraph+"\n",style=MaterialTheme.typography.bodySmall)}}},confirmButton={TextButton(onClick={notices=null}) {Text("Done")}})}
         state.error?.let {message ->AlertDialog(onDismissRequest={state.error=null},title={Text("Camera Stats")},text={Text(message)},confirmButton={TextButton(onClick={state.error=null}) {Text("OK")}}) }
     }
 }
