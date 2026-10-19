@@ -109,5 +109,26 @@ final class DesktopMediaTests:XCTestCase {
             }
         }
     }
+    @MainActor func testNativeBrawMultiFrameForwardReverseAndReseek() async throws {
+        let (worker,_)=try tools(),env=ProcessInfo.processInfo.environment
+        guard let sample=env["SHOT_REPORTER_BRAW_SEQUENCE_SAMPLE"],let helper=env["SHOT_REPORTER_BRAW_HELPER"] else {throw XCTSkip("Authorized local multi-frame BRAW fixture/helper are not configured.")}
+        let root=try temporary(),source=root.appendingPathComponent("multi-frame")
+        try FileManager.default.createDirectory(at:source,withIntermediateDirectories:true)
+        let original=URL(fileURLWithPath:sample),copy=source.appendingPathComponent(original.lastPathComponent),before=try Data(contentsOf:original)
+        try before.write(to:copy,options:.withoutOverwriting)
+        let prefs=try XCTUnwrap(UserDefaults(suiteName:"ShotReporterBrawSequence-"+UUID().uuidString)),store=Store(root:root,preferences:prefs);store.open(.demo())
+        let model=DesktopMediaModel(root:root,reportID:store.report.id,worker:worker,preferences:prefs);model.brawHelper=helper
+        model.register(source,camera:"A",roll:"PROFILE",load:"local-temporal-fixture");try await wait(model)
+        let clip=try XCTUnwrap(model.snapshot.clips.first),count=try XCTUnwrap(clip.metadata.frames);XCTAssertGreaterThan(count,1);XCTAssertLessThanOrEqual(count,8)
+        model.selected=clip.id;model.decode(0);try await wait(model);let first=try XCTUnwrap(model.frame)
+        model.play();try await wait(model);model.playing=false
+        XCTAssertEqual(model.frames.map(\.index),Array(0..<count));XCTAssertEqual(model.frames.first?.pngSHA256,first.pngSHA256)
+        let forward=model.frames;XCTAssertGreaterThan(Set(forward.map(\.pngSHA256)).count,1)
+        model.decode(count-1);try await wait(model);XCTAssertEqual(model.frame?.pngSHA256,forward.last?.pngSHA256)
+        model.play(reverse:true);try await wait(model);model.playing=false
+        XCTAssertEqual(model.frames.map(\.index),Array((0..<count).reversed()));XCTAssertEqual(model.frames.map(\.pngSHA256),forward.reversed().map(\.pngSHA256))
+        model.decode(0);try await wait(model);XCTAssertEqual(model.frame?.pngSHA256,first.pngSHA256)
+        XCTAssertEqual(try Data(contentsOf:original),before);XCTAssertEqual(try Data(contentsOf:copy),before)
+    }
 }
 #endif

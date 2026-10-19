@@ -59,6 +59,19 @@ class RawIntegrationTests {
         assertTrue(primary.parent.fileName.toString().endsWith(".RDC",true));assertEquals(2,RawPackages.files(primary.parent).count {it.fileName.toString().endsWith(".R3D",true)})
         workflow(primary.parent,"red-rdc",3071)
     }
+    @Test fun actualBrawLocalMultiFrameOrderingReseekCopyReopenAndUndo() {
+        val file=sample("SHOT_REPORTER_BRAW_SEQUENCE_SAMPLE");assumeTrue(System.getenv("SHOT_REPORTER_BRAW_HELPER")!=null)
+        val original=sha256(file);val source=Files.createDirectory(temp.resolve("sequence-source")).toRealPath();val copy=Files.copy(file,source.resolve(file.fileName))
+        val decoder=decoder();val probe=decoder.probe(copy);assertTrue(probe.readable,probe.issue);assertTrue(probe.frames!! in 2..60)
+        val count=minOf(8L,probe.frames).toInt();val frames=decoder.frameBatch(copy,0,count,temp.resolve("batch"));assertEquals((0L until count).toList(),frames.map {it.first})
+        assertTrue(frames.map {sha256(it.second.second)}.distinct().size>=2,"The temporal acceptance fixture must contain distinguishable frame pixels.")
+        for(index in listOf(probe.frames-1,0,probe.frames/2,1).distinct()) {
+            val single=decoder.exactFrame(copy,index,temp.resolve("seek-$index.png"));assertEquals(index.toString(),single.first)
+            frames.firstOrNull {it.first==index}?.let {assertEquals(sha256(it.second.second),single.second)}
+        }
+        assertFails {decoder.exactFrame(copy,probe.frames,temp.resolve("outside.png"))}
+        workflow(source,"braw-folder",probe.frames-1);assertEquals(original,sha256(file))
+    }
     @Test fun relocationComparisonIgnoresOnlyRedLocationAndKeepsNativeIdentity() {
         val decoder=Decoder(Path.of("unused"),Path.of("unused"),null,null)
         val a=Probe(codec="redcode",container="r3d",tags=mapOf("File Path" to "/a","UUID" to "one"),readable=true)

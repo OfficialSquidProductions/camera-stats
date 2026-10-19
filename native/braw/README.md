@@ -1,6 +1,8 @@
 # Blackmagic RAW adapter
 
-Status: a local macOS CPU adapter builds against the separately supplied SDK 6.0 and decodes the SDK's genuine one-frame BRAW sample. Eleven private acceptance checks pass. This is not Windows, multi-frame, multicard, complete camera-card, or release-distribution certification.
+Status: a local macOS CPU adapter builds against the separately supplied SDK 6.0 and decodes the SDK's genuine one-frame BRAW sample. Eleven private acceptance checks pass. Additional short multi-frame checks are recorded below; Windows, long-clip, multicard, complete camera-card and release-distribution certification remain open.
+
+Follow-up local validation found an already-installed Blackmagic RAW Speed Test `profile.braw` with four distinguishable frames at 60 fps. Ten additional native helper checks pass. JVM, native Swift and packaged-runtime tests verify sequence mapping, arbitrary seeking/reseeking, forward/reverse review, copy/reopen/undo and source preservation. This establishes the documented short four-frame profile; long-clip, multicard, Windows and camera-card/release certification remain open. No benchmark resource or image is redistributed.
 
 The user-provided Blackmagic RAW 6.0 Mac disk image contains a separate `BlackmagicRawSDK.pkg`, including Mac headers, dispatch source, the API framework, examples, and `Media/sample.braw` with `sample.sidecar`. It also includes Windows API declarations/dispatch source, but its package inventory does not include Windows API binary libraries. A Windows SDK/runtime package is needed to validate Windows execution.
 
@@ -34,7 +36,7 @@ The output executable and test directory must be new paths outside the repositor
 
 `version` emits JSON containing framework version/build and the SDK API's own version result. In this supplied package those are `6.0`, `60000.40.271`, and `0.0` respectively; the API result is retained honestly rather than relabeled.
 
-Validated checks include repeated deterministic full-resolution decode, exact SDK frame index, PPM byte count, out-of-range/malformed indices, output collision protection, symlink refusal, explicit sidecar/no-sidecar rendering state, malformed-sidecar refusal, actual pixel changes when selecting the sidecar LUT, and source/sidecar preservation after cancellation. The image was visually inspected. The bundled clip is **one frame**, so temporal ordering and later-frame seeking remain untested.
+Validated checks include repeated deterministic full-resolution decode, exact SDK frame index, PPM byte count, out-of-range/malformed indices, output collision protection, symlink refusal, explicit sidecar/no-sidecar rendering state, malformed-sidecar refusal, actual pixel changes when selecting the sidecar LUT, and source/sidecar preservation after cancellation. The SDK image was visually inspected. That bundled clip is **one frame**; temporal checks use the separate already-installed four-frame benchmark described above.
 
 ## Local adapter contract
 
@@ -42,7 +44,7 @@ The adapter uses the official SDK to open an explicitly selected local logical c
 
 Frame output is a new PPM file in a worker-owned directory, followed by independent worker validation and hashing. Output must not overwrite a path. Decoding must finish before the worker accepts the frame reference; failures and unsupported SDK capabilities remain visible. SDK sidecar state affects decode identity and must be included in source-group validation. No sidecar write, trim, export or source rename API is needed for this first adapter.
 
-The SDK-provided real clip passes deterministic frame, output protection and cancellation checks. Full acceptance additionally requires authorized multi-frame BRAW footage for early/late frame checks. Copied card structures and sidecars are additionally needed for physical-media acceptance. The full logical group copy, naming, journal and undo remain owned by the shared media worker rather than the decoder.
+The SDK-provided real clip passes deterministic frame, output protection and cancellation checks. Short temporal acceptance uses the separate local benchmark. Longer camera clips, copied card structures and sidecars are additionally needed for wider physical-media acceptance. The full logical group copy, naming, journal and undo remain owned by the shared media worker rather than the decoder.
 
 The CPU output is full-resolution RGB8 PPM (64 million pixel limit), preserving SDK processing defaults and automatically attached sidecar state. It is a review image, not sensor-raw export. The parent worker must impose a hard process timeout and accept output only after successful process exit; the helper also has a 45-second callback deadline. Some SDK cleanup calls can block after a vendor failure, so the process timeout remains mandatory.
 
