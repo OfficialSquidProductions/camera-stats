@@ -34,3 +34,15 @@ clients/local.properties
 
 # Website build output is regenerated from its retained Worker source.
 website/dist/
+
+# Privately supplied vendor SDKs and camera originals are never public source fixtures.
+/R3DSDK*/
+/R3DSDK*.zip
+/Blackmagic_RAW*
+*.R3D
+*.r3d
+*.braw
+*.BRAW
+*.sidecar
+*.RMD
+*.rmd

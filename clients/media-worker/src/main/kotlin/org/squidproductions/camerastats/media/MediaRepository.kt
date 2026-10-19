@@ -23,13 +23,20 @@ class MediaRepository(val home:Path):Closeable {
             val application=(db.query("PRAGMA application_id").single().single() as Number).toInt()
             val tables=db.query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
             val fresh=version==0 && application==0 && tables.isEmpty()
-            require(fresh || (application==0x53524d44 && version==1)) {"Unknown or newer desktop media database; its schema and bytes were preserved."}
+            require(fresh || (application==0x53524d44 && version in 1..2)) {"Unknown or newer desktop media database; its schema and bytes were preserved."}
             check(db.query("PRAGMA quick_check").single().single()=="ok") {"Media database needs recovery; original bytes preserved."}
             db.query("PRAGMA busy_timeout=3000");db.query("PRAGMA journal_mode=WAL");db.execute("PRAGMA synchronous=FULL")
             if(fresh) transaction {
                 db.execute("CREATE TABLE records(kind TEXT NOT NULL,id TEXT NOT NULL,json TEXT NOT NULL,PRIMARY KEY(kind,id))")
-                db.execute("PRAGMA application_id=1397902660");db.execute("PRAGMA user_version=1")
+                db.execute("PRAGMA application_id=1397902660");db.execute("PRAGMA user_version=2")
             }
+            if(!fresh && version==1) exclusive {if((db.query("PRAGMA user_version").single().single() as Number).toInt()==1) {
+                // Keep an independent, consistent v1 database before adding package-aware records.
+                val backup=home.resolve("media-before-v2-"+org.squidproductions.camerastats.core.identity()+".sqlite3")
+                db.execute("VACUUM INTO ?",listOf(backup.toAbsolutePath().toString()))
+                FileChannel.open(backup,StandardOpenOption.WRITE).use {it.force(true)};forceDirectory(home)
+                transaction {db.execute("PRAGMA user_version=2")}
+            }}
         } catch(e:Throwable) {db.close();throw e}
     }
     fun <T> exclusive(action:()->T):T = FileChannel.open(home.resolve("worker.lock"),StandardOpenOption.CREATE,StandardOpenOption.WRITE).use {channel ->
@@ -57,7 +64,7 @@ class MediaRepository(val home:Path):Closeable {
     }
     fun snapshot():MediaSnapshot {
         db.execute("BEGIN")
-        try {val result=MediaSnapshot(all("root"),all("file"),all("clip"),all("slate"),all("association"),all("job"),all("preset"),all("audit"));db.execute("COMMIT");return result}
+        try {val result=MediaSnapshot(all("root"),all("file"),all("clip"),all("slate"),all("association"),all("job"),all("preset"),all("audit"),all("packageApproval"));db.execute("COMMIT");return result}
         catch(e:Throwable) {runCatching {db.execute("ROLLBACK")};throw e}
     }
     override fun close()=db.close()

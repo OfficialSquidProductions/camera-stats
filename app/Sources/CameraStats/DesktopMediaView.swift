@@ -14,6 +14,7 @@ import CameraStatsCore
     @State private var scene=""
     @State private var take=""
     @State private var index="0"
+    @State private var completeSource=false
     @State private var preset=DesktopPreset(name:"Movie",template:DesktopPreset.movie)
     init(store:Store,model:DesktopMediaModel?=nil) {
         self.store=store
@@ -23,7 +24,7 @@ import CameraStatsCore
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
             toolbar
-            Text("Sources stay unchanged. Standalone MOV/MP4 profile only. RAW registration does not enable RAW playback or renaming. Silent frame review; slate OCR is not implemented.").font(.caption).foregroundStyle(.secondary)
+            Text("Sources stay unchanged. RAW copies preserve approved package members and internal names inside a named folder. RAW preview needs a configured vendor decoder. Silent review; slate OCR is not implemented.").font(.caption).foregroundStyle(.secondary)
             HSplitView {
                 mediaList.frame(minWidth:230,idealWidth:270,maxWidth:330)
                 ScrollView {VStack(alignment:.leading,spacing:14) {
@@ -39,6 +40,7 @@ import CameraStatsCore
         .onDisappear {model.playing=false;if model.busy {model.cancel()}}
         .onChange(of:model.selected) {_,_ in
             model.playing=false;model.frame=nil;model.suggestions=[];index="0"
+            completeSource=false
             let approved=model.snapshot.slates.first {$0.clipId==model.selected};scene=approved?.scene ?? "";take=approved?.take ?? ""
         }
         .onChange(of:model.frame?.id,initial:true) {_,_ in if let frame=model.frame {index=String(frame.index)}}
@@ -57,12 +59,13 @@ import CameraStatsCore
         }
     }
     private var toolbar:some View {
-        HStack(alignment:.bottom,spacing:10) {
-            VStack(alignment:.leading) {Text("Desktop footage").font(.title2.bold());Text("\(model.snapshot.clips.count) registered · \(checked.count) checked · report r\(store.report.revision)").font(.caption).foregroundStyle(.secondary)}
-            Spacer()
+        VStack(alignment:.leading,spacing:10) {
+            HStack {VStack(alignment:.leading) {Text("Desktop footage").font(.title2.bold());Text("\(model.snapshot.clips.count) registered · \(checked.count) checked · report r\(store.report.revision)").font(.caption).foregroundStyle(.secondary)};Spacer();Button("REDline…") {model.chooseRedline()}.disabled(model.busy);Button("BRAW…") {model.chooseBrawHelper()}.disabled(model.busy)}
+            HStack(alignment:.bottom,spacing:10) {
             labeled("Camera",text:$camera,width:70);labeled("Roll",text:$roll,width:90);labeled("Load identity",text:$load,width:140)
             Button("Register folder") {if let path=model.chooseDirectory("Register a working-copy folder") {model.register(path,camera:camera,roll:roll,load:load)}}.disabled(model.busy).buttonStyle(.borderedProminent)
             if model.busy {ProgressView().controlSize(.small);Button("Cancel") {model.cancel()}} else {Button("Refresh journals") {model.refresh()}}
+            }
         }
     }
     private func labeled(_ title:String,text:Binding<String>,width:CGFloat)->some View {VStack(alignment:.leading,spacing:4) {Text(title).font(.caption);TextField(title,text:text).textFieldStyle(.roundedBorder).frame(width:width)}.disabled(model.busy)}
@@ -85,6 +88,18 @@ import CameraStatsCore
             Text(clip.originalName).font(.title3.bold()).textSelection(.enabled)
             Text("\(clip.metadata.width) × \(clip.metadata.height) · \(clip.metadata.rate) · \(clip.metadata.duration)s · \(clip.metadata.frames.map(String.init) ?? "unknown") frames").font(.caption).foregroundStyle(.secondary)
             if !clip.metadata.issue.isEmpty {Text(clip.metadata.issue).foregroundStyle(.red)}
+            if let timing=clip.metadata.tags["timestampMeaning"] {Text(timing).font(.caption).foregroundStyle(.secondary)}
+            if let package=clip.packageRoot {
+                GroupBox("Package inventory · \(clip.packageKind ?? "RAW") · \(package)") {
+                    VStack(alignment:.leading,spacing:5) {
+                        Text("Every listed file will be copied. Review for unrelated/private files before confirming. Internal names stay unchanged.").font(.caption)
+                        ForEach(model.snapshot.files.filter {(clip.memberFileIds ?? []).contains($0.id)}) {file in Text("\(file.relative) · \(file.size) bytes · SHA \(file.sha256)").font(.system(.caption,design:.monospaced)).textSelection(.enabled)}
+                        if let issue=clip.packageIssue,!issue.isEmpty {Text(issue).foregroundStyle(.red)}
+                        if clip.packageKind=="red-rdc" {Text("REDline cannot detect a missing final span: a truncated package may open as a shorter clip. Compare this inventory with your complete-card copy or source manifest.").font(.caption).foregroundStyle(.red);Toggle("I confirm this is the complete source package",isOn:$completeSource).disabled(model.busy)}
+                        Button((model.snapshot.packageApprovals ?? []).contains {$0.clipId==clip.id && $0.fingerprint==clip.packageFingerprint} ? "Inventory confirmed":"Confirm every package member") {model.approvePackage(clip,completeSourceConfirmed:completeSource)}.disabled(model.busy || !(clip.packageIssue ?? "").isEmpty || (clip.packageKind=="red-rdc" && !completeSource))
+                    }.frame(maxWidth:.infinity,alignment:.leading)
+                }
+            }
             if let frame=model.frame {
                 DesktopSourceFrame(frame:frame,home:model.home,onReverse:{if !model.busy {model.play(reverse:true)}},onPause:{model.playing=false},onPlay:{if !model.busy {model.play()}})
             }

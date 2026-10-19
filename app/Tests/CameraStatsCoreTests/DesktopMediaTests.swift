@@ -73,5 +73,41 @@ final class DesktopMediaTests:XCTestCase {
             window.close()
         }
     }
+    @MainActor func testNativeBrawBridgeReviewsPackageCopiesReopensAndUndoes() async throws {
+        let (worker,_)=try tools(),env=ProcessInfo.processInfo.environment
+        guard let sample=env["SHOT_REPORTER_BRAW_SAMPLE"],let helper=env["SHOT_REPORTER_BRAW_HELPER"] else {throw XCTSkip("Authorized local BRAW SDK sample/helper are not configured.")}
+        let root=try temporary(),source=root.appendingPathComponent("braw-source"),destination=root.appendingPathComponent("copies")
+        try FileManager.default.createDirectory(at:source,withIntermediateDirectories:true);try FileManager.default.createDirectory(at:destination,withIntermediateDirectories:true)
+        let original=URL(fileURLWithPath:sample),clipFile=source.appendingPathComponent(original.lastPathComponent)
+        try FileManager.default.copyItem(at:original,to:clipFile)
+        let sidecar=original.deletingPathExtension().appendingPathExtension("sidecar")
+        if FileManager.default.fileExists(atPath:sidecar.path) {try FileManager.default.copyItem(at:sidecar,to:source.appendingPathComponent(sidecar.lastPathComponent))}
+        let originalBytes=try Data(contentsOf:clipFile),prefs=try XCTUnwrap(UserDefaults(suiteName:"ShotReporterBraw-"+UUID().uuidString))
+        let store=Store(root:root,preferences:prefs);store.open(.demo());let before=try Exchange.encoder().encode(store.report)
+        let model=DesktopMediaModel(root:root,reportID:store.report.id,worker:worker,preferences:prefs);model.brawHelper=helper
+        model.register(source,camera:"A",roll:"SDK",load:"authorized-braw-fixture");try await wait(model)
+        let clip=try XCTUnwrap(model.snapshot.clips.first);XCTAssertEqual(clip.packageKind,"braw-folder");XCTAssertTrue(clip.metadata.readable,clip.metadata.issue);XCTAssertEqual(clip.memberFileIds?.count,2)
+        model.selected=clip.id;model.decode(0);try await wait(model);XCTAssertEqual(model.frame?.index,0);XCTAssertEqual(model.frame?.packageFingerprint,clip.packageFingerprint)
+        model.approvePackage(clip);try await wait(model);XCTAssertEqual(model.snapshot.packageApprovals?.count,1)
+        model.approve(scene:"TEST",take:"1");try await wait(model);model.link(try XCTUnwrap(store.report.active.first?.id),report:store.report);try await wait(model)
+        model.preflight([clip.id],report:store.report,preset:DesktopPreset(name:"RAW fixture",template:"R-{asset}"),destination:destination);try await wait(model)
+        let job=try XCTUnwrap(model.snapshot.jobs.first);XCTAssertEqual(job.items.count,2);XCTAssertEqual(Set(job.items.map(\.id)).count,2)
+        model.execute(job.id);try await wait(model);XCTAssertEqual(model.snapshot.jobs.first?.state,"completed")
+        let reopened=DesktopMediaModel(root:root,reportID:store.report.id,worker:worker,preferences:prefs);reopened.refresh();try await wait(reopened);XCTAssertEqual(reopened.snapshot.jobs.first?.state,"completed")
+        model.execute(job.id,undo:true);try await wait(model);XCTAssertEqual(model.snapshot.jobs.first?.state,"undone")
+        XCTAssertEqual(try Data(contentsOf:clipFile),originalBytes);XCTAssertEqual(try Exchange.encoder().encode(Store(root:root,preferences:prefs).report),before)
+        if let path=env["SHOT_REPORTER_SCREENSHOTS"] {
+            _=NSApplication.shared
+            for dark in [false,true] {
+                let hosting=NSHostingView(rootView:DesktopMediaWorkspace(store:store,model:model).environment(\.colorScheme,dark ? .dark:.light))
+                let window=NSWindow(contentRect:NSRect(x:0,y:0,width:1280,height:800),styleMask:[.titled,.resizable],backing:.buffered,defer:false)
+                window.isReleasedWhenClosed=false;window.contentView=hosting;window.appearance=NSAppearance(named:dark ? .darkAqua:.aqua);window.orderFront(nil);hosting.frame=NSRect(origin:.zero,size:window.contentLayoutRect.size)
+                try await Task.sleep(for:.milliseconds(350));try await wait(model);hosting.layoutSubtreeIfNeeded();window.displayIfNeeded()
+                let capture=try XCTUnwrap(CGWindowListCreateImage(.null,.optionIncludingWindow,CGWindowID(window.windowNumber),.boundsIgnoreFraming))
+                let png=try XCTUnwrap(NSBitmapImageRep(cgImage:capture).representation(using:.png,properties:[:]))
+                try FileManager.default.createDirectory(atPath:path,withIntermediateDirectories:true);try png.write(to:URL(fileURLWithPath:path).appendingPathComponent(dark ? "braw-workspace-dark.png":"braw-workspace-light.png"));window.close()
+            }
+        }
+    }
 }
 #endif

@@ -10,6 +10,10 @@ The built-in “The Last Light” fictional test script is the supplied Producti
 
 No RED SDK, Blackmagic RAW SDK, vendor decoder binary, external OCR model, commercial display-font file, or proprietary camera media is redistributed. Future format and model integrations require their own license/redistribution review and notices; the application's MIT license cannot license those materials.
 
+The local Mac development updater uses pinned Sparkle 2.10.0 under its original permissive license and retained component notices. Its original `LICENSE` is preserved in the local development app's `DesktopMedia/legal/Sparkle-LICENSE.txt`; official source is <https://github.com/sparkle-project/Sparkle/tree/2.10.0>. Store/TestFlight variants exclude Sparkle. Production direct-distribution builds must retain the license, sign/notarize all required components and configure their own trusted signed feed.
+
+The local development media worker bundles an explicitly supplied network-disabled LGPL FFmpeg 9.0.2 build and its LGPL-2.1 notice. Official corresponding source is <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>, SHA-256 `8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e`. The exact configuration/runtime is recorded in each development bundle's `DEVELOPMENT.json`; TIFF and PPM decoders convert vendor-produced review images. Production distribution requires the actual corresponding-source/license audit. No REDline, BRAW helper linked to a local SDK, or proprietary framework is bundled. See [RAW license boundaries](docs/RAW_DESKTOP.md).
+
 
 ## Android / Windows development clients
 

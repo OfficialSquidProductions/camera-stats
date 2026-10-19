@@ -17,7 +17,8 @@ fun main(args:Array<String>) {
         val report=request["reportJSON"]?.jsonPrimitive?.content?.let {Exchange.decode(it.toByteArray())}
             ?: request["report"]?.let {Exchange.decode(it.toString().toByteArray())}
         MediaRepository(Path.of(args[0])).use {repo ->
-            val service=MediaService(repo,Decoder(Path.of(args[1]),Path.of(args[2])));val jobs=CopyJobs(service)
+            fun tool(key:String,environment:String)=request[key]?.jsonPrimitive?.content?.takeIf {it.isNotBlank()}?.let(Path::of) ?: System.getenv(environment)?.takeIf {it.isNotBlank()}?.let(Path::of)
+            val service=MediaService(repo,Decoder(Path.of(args[1]),Path.of(args[2]),tool("redline","SHOT_REPORTER_REDLINE"),tool("brawHelper","SHOT_REPORTER_BRAW_HELPER")));val jobs=CopyJobs(service)
             val result:JsonElement=when(value("command")) {
                 "snapshot" -> mediaJSON.encodeToJsonElement(repo.snapshot())
                 "register" -> mediaJSON.encodeToJsonElement(service.register(Path.of(value("path")),value("camera"),value("roll"),value("load")))
@@ -25,6 +26,7 @@ fun main(args:Array<String>) {
                 "frame" -> mediaJSON.encodeToJsonElement(service.frame(value("clipID"),value("index").toLong()))
                 "frames" -> mediaJSON.encodeToJsonElement(service.frames(value("clipID"),value("index").toLong()))
                 "approve" -> mediaJSON.encodeToJsonElement(service.approve(value("clipID"),value("frameID"),value("scene"),value("take")))
+                "approvePackage" -> mediaJSON.encodeToJsonElement(service.approvePackage(value("clipID"),value("fingerprint"),request["completeSourceConfirmed"]?.jsonPrimitive?.booleanOrNull ?: false))
                 "suggestions" -> mediaJSON.encodeToJsonElement(service.suggestions(value("clipID"),checkNotNull(report)))
                 "link" -> mediaJSON.encodeToJsonElement(service.link(value("clipID"),checkNotNull(report),value("entryID")))
                 "unlink" -> mediaJSON.encodeToJsonElement(service.unlink(value("associationID")))

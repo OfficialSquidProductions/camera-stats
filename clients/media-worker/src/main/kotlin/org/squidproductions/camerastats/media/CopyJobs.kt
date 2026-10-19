@@ -44,22 +44,32 @@ class CopyJobs(val service:MediaService,private val checkpoint:(String,CopyJob)-
         val snapshot=repo.snapshot();val reportHash=Exchange.digest(Exchange.encode(report));val id=identity();val output=parent.resolve("Shot-Reporter-"+id)
         require(!Files.exists(output,LinkOption.NOFOLLOW_LINKS)) {"Destination batch folder already exists."}
         for(root in snapshot.roots) {val source=Path.of(root.path).toAbsolutePath().normalize();require(!parent.startsWith(source) && !source.startsWith(output)) {"Choose a destination outside registered source roots."}}
-        val items=clipIds.map {clipId ->
+        val items=clipIds.flatMap {clipId ->
             val clip=snapshot.clips.single {it.id==clipId};val root=snapshot.roots.single {it.id==clip.rootId}
-            require(clip.metadata.readable && clip.originalName.substringAfterLast('.').lowercase() in setOf("mov","mp4")) {"${clip.originalName}: this format has no certified copy/rename adapter in this milestone."}
-            require(clip.companions.isEmpty()) {"${clip.originalName}: related files need a group-aware adapter (${clip.companions.joinToString()}). No files were changed."}
+            require(clip.metadata.readable && (clip.packageRoot!=null || clip.originalName.substringAfterLast('.').lowercase() in setOf("mov","mp4"))) {"${clip.originalName}: configure and validate an available decoder before preparing copies."}
+            require(clip.packageRoot!=null || clip.companions.isEmpty()) {"${clip.originalName}: related files need a group-aware adapter (${clip.companions.joinToString()}). No files were changed."}
+            if(clip.packageRoot!=null) require(snapshot.packageApprovals.any {it.clipId==clip.id && it.fingerprint==clip.packageFingerprint && (clip.packageKind!="red-rdc" || it.completeSourceConfirmed)}) {"Review and confirm the complete RAW package inventory before copying."}
             val (file,_)=service.source(clip)
             val slate=snapshot.slates.singleOrNull {it.clipId==clipId} ?: error("Confirm the chosen source slate frame for ${clip.originalName} first.")
-            require(slate.frame.fileSHA256==file.sha256 && sha256(localPath(repo.home,slate.frame.png))==slate.frame.pngSHA256) {"Slate evidence changed."}
+            require(slate.frame.fileSHA256==file.sha256 && slate.frame.packageFingerprint==clip.packageFingerprint && sha256(localPath(repo.home,slate.frame.png))==slate.frame.pngSHA256) {"Slate evidence changed."}
             val links=snapshot.associations.filter {it.clipId==clipId && it.reportId==report.id}
             require(links.size==1) {"${clip.originalName}: select exactly one reviewed report association before whole-file naming. Multiple take ranges are preserved but require their own naming decision."}
             val link=links.single();require(link.reportFingerprint==reportHash && link.reportRevision==report.revision && report.active.any {it.id==link.entryId}) {"Report changed. Review and confirm its association again."}
             val values=report.values+report.active.single {it.id==link.entryId}.values+mapOf("project" to report.values["title"].orEmpty(),"show" to report.values["title"].orEmpty(),"scene" to slate.scene,"take" to slate.take,"camera" to root.camera,"roll" to root.roll,"load" to root.load,"original" to clip.originalName.substringBeforeLast('.'),"asset" to clip.id.take(8),"shoot_date" to report.values["date"].orEmpty())
-            val name=DesktopNaming.evaluate(preset.template,values)+"."+clip.originalName.substringAfterLast('.')
-            require(output.resolve(name).toString().length<=240) {"Proposed Windows-compatible path exceeds 240 characters. Choose a shorter destination or name."}
-            CopyItem(clip.id,file.id,root.id,file.relative,file.sha256,file.size,name,slate.scene,slate.take,slate.frame,link,values)
+            val name=DesktopNaming.evaluate(preset.template,values)
+            val members=if(clip.packageRoot!=null) clip.memberFileIds.map {id->snapshot.files.single {it.id==id}} else listOf(file)
+            members.map {member ->
+                val target=if(clip.packageRoot!=null) {
+                    val directory=RawPackages.directory(Path.of(root.path),clip.packageRoot);val source=service.sourceFile(member.id).second
+                    name+(if(clip.packageKind=="red-rdc") ".RDC" else "")+"/"+directory.relativize(source).toString().replace('\\','/')
+                } else name+"."+clip.originalName.substringAfterLast('.')
+                require(output.resolve(target).toString().length<=240) {"Proposed Windows-compatible path exceeds 240 characters. Choose a shorter destination or name."}
+                for(part in target.split('/')) {require(part !in setOf(".","..") && Naming.preview(part,Report(values=emptyMap()),Entry(values=emptyMap()))==part) {"An internal package name is not portable; original names were retained and copy blocked."}}
+                CopyItem(clip.id,member.id,root.id,member.relative,member.sha256,member.size,target,slate.scene,slate.take,slate.frame,link,values,verifyMedia=member.id==file.id,sourceProbe=clip.metadata)
+            }
         }
         require(items.map {collisionKey(it.targetName)}.distinct().size==items.size) {"Case-insensitive or Unicode-normalized filename collision in the batch. Add roll/original/asset tokens; no unexplained counters were added."}
+        val paths=mutableMapOf<String,String>();for(item in items) {var prefix="";for(part in item.targetName.split('/')) {prefix=if(prefix.isEmpty()) part else "$prefix/$part";val previous=paths.putIfAbsent(collisionKey(prefix),prefix);require(previous==null || previous==prefix) {"Package paths collide on a Windows destination. No internal names were changed."}}}
         val total=items.fold(0L) {sum,item->Math.addExact(sum,item.size)}
         require(Files.getFileStore(parent).usableSpace>Math.addExact(total,16L*1024*1024)) {"Insufficient destination space for this copy batch."}
         val result=CopyJob(id,report.id,report.revision,reportHash,preset,output.toString(),now(),items)
@@ -67,17 +77,19 @@ class CopyJobs(val service:MediaService,private val checkpoint:(String,CopyJob)-
     }
     private fun manifest(job:CopyJob):ByteArray = mediaJSON.encodeToString(buildJsonObject {
         put("format","org.squidproductions.shot-reporter.copy-manifest");put("schema",1);put("jobID",job.id);put("reportID",job.projectId);put("reportRevision",job.reportRevision);put("reportFingerprint",job.reportFingerprint);put("preset",mediaJSON.encodeToJsonElement(job.preset));put("createdAt",job.createdAt)
-        put("files",buildJsonArray {job.items.forEach {item ->add(buildJsonObject {put("assetID",item.clipId);put("physicalFileID",item.fileId);put("sourceRootID",item.rootId);put("originalRelativePath",item.sourceRelative);put("currentRelativePath",item.targetName);put("size",item.size);put("sha256",item.sourceSHA256);put("approvedSlate",mediaJSON.encodeToJsonElement(item.frame));put("scene",item.scene);put("take",item.take);put("association",mediaJSON.encodeToJsonElement(item.association));put("resolvedValues",mediaJSON.encodeToJsonElement(item.resolved))})}})
-        put("capability","Standalone supported MOV/MP4 verified copies. Not a certified RAW or NLE adapter. No embedded metadata rewritten.")
+        put("files",buildJsonArray {job.items.forEach {item ->add(buildJsonObject {put("assetID",item.clipId);put("physicalFileID",item.fileId);put("sourceRootID",item.rootId);put("originalRelativePath",item.sourceRelative);put("currentRelativePath",item.targetName);put("size",item.size);put("sha256",item.sourceSHA256);put("primaryMedia",item.verifyMedia);put("nativeMetadata",mediaJSON.encodeToJsonElement(item.sourceProbe));put("approvedSlate",mediaJSON.encodeToJsonElement(item.frame));put("scene",item.scene);put("take",item.take);put("association",mediaJSON.encodeToJsonElement(item.association));put("resolvedValues",mediaJSON.encodeToJsonElement(item.resolved))})}})
+        put("capability","Byte-verified copies with unchanged package internal paths, primary metadata and approved-frame verification. No embedded metadata rewritten; no NLE relink certification.")
     }).toByteArray()
     fun execute(id:String):CopyJob=repo.exclusive {
         var current=job(id);require(current.state !in setOf("undone","undoing")) {"This job is being undone or already undone. Make a new preview to create new copies."}
         try {
             val root=validateFolder(current,create=true);current=persist(current.copy(state="copying",error=null))
+            current.items.map {it.clipId}.distinct().forEach {clipId->val clip=repo.all<Clip>("clip").single {it.id==clipId};service.source(clip);require(current.items.filter {it.clipId==clipId}.all {it.frame.packageFingerprint==clip.packageFingerprint}) {"Package changed since the frozen preview."}}
             for(index in current.items.indices) {
-                var item=current.items[index];val clip=repo.all<Clip>("clip").single {it.id==item.clipId};val (file,source)=service.source(clip)
+                var item=current.items[index];val (file,source)=service.sourceFile(item.fileId)
                 require(file.sha256==item.sourceSHA256 && file.size==item.size) {"Source version differs from the frozen preview."}
                 val output=target(current,item)
+                RawPackages.ensureParents(root,output)
                 if(Files.exists(output,LinkOption.NOFOLLOW_LINKS)) {
                     require(sha256(output)==item.sourceSHA256) {"A destination file differs; it was not overwritten: ${item.targetName}"}
                     if(item.publishedKey!=null) require(fileKey(output)==item.publishedKey) {"A newer file replaced this output. Recovery needs review."}
@@ -97,14 +109,22 @@ class CopyJobs(val service:MediaService,private val checkpoint:(String,CopyJob)-
                     item=item.copy(state="staged");current=persist(current.copy(items=current.items.toMutableList().also {it[index]=item}));checkpoint("staged",current)
                     // Hard-link publication is atomic and cannot replace a destination. Unsupported volumes fail safely.
                     try {Files.createLink(output,stage)} catch(e:Exception) {throw IllegalStateException("Destination cannot safely publish this verified copy (existing file or hard links unavailable). The staged copy and journal are retained; choose APFS/NTFS or another supported volume.",e)}
-                    forceDirectory(root);checkpoint("published",current)
+                    forceDirectory(output.parent);checkpoint("published",current)
                 }
                 require(sha256(output)==item.sourceSHA256) {"Published copy failed SHA-256 verification."}
-                val probe=service.decoder.probe(output);require(probe==clip.metadata) {"Renamed copy metadata differs from the registered original."}
-                val proof=repo.home.resolve("copy-check-"+identity()+".png")
-                val (_,frameHash)=service.decoder.exactFrame(output,item.frame.index,proof);require(frameHash==item.frame.pngSHA256) {"Renamed copy's approved source frame differs."};Files.delete(proof)
-                item=item.copy(state="verified",publishedKey=fileKey(output));current=persist(current.copy(items=current.items.toMutableList().also {it[index]=item}));checkpoint("verified",current)
+                item=item.copy(state="bytes-verified",publishedKey=fileKey(output));current=persist(current.copy(items=current.items.toMutableList().also {it[index]=item}))
                 // Stages are retained as recovery evidence until an explicit maintenance feature is implemented.
+            }
+            // Decode only after the entire package is present: primary readers may need later spans/sidecars.
+            for(index in current.items.indices) {
+                var item=current.items[index]
+                if(item.verifyMedia) {
+                    val clip=repo.all<Clip>("clip").single {it.id==item.clipId};service.source(clip)
+                    val output=target(current,item);val probe=service.decoder.probe(output);require(service.decoder.equivalentMetadata(item.sourceProbe ?: clip.metadata,probe)) {"Copied package metadata differs from the frozen registered original."}
+                    val proof=repo.home.resolve("copy-check-"+identity()+".png")
+                    val (_,frameHash)=service.decoder.exactFrame(output,item.frame.index,proof);require(frameHash==item.frame.pngSHA256) {"Copied package's approved source frame differs."};Files.delete(proof)
+                }
+                item=item.copy(state="verified");current=persist(current.copy(items=current.items.toMutableList().also {it[index]=item}));checkpoint("verified",current)
             }
             val manifest=root.resolve("relink-manifest.json");val bytes=manifest(current)
             if(Files.exists(manifest,LinkOption.NOFOLLOW_LINKS)) require(Files.readAllBytes(manifest).contentEquals(bytes)) {"Existing relink manifest differs; it was preserved."} else writeNew(manifest,bytes)
@@ -129,9 +149,10 @@ class CopyJobs(val service:MediaService,private val checkpoint:(String,CopyJob)-
             val undoRoot=root.resolve(".undone");if(!Files.exists(undoRoot)) Files.createDirectory(undoRoot);canonical(undoRoot)
             for(index in current.items.indices) {
                 var item=current.items[index];if(item.state=="undone") continue
-                val relative=item.undoRelative ?: (".undone/"+identity()+"-"+item.targetName)
+                val relative=item.undoRelative ?: (".undone/"+current.id+"/"+item.targetName)
                 item=item.copy(undoRelative=relative);current=persist(current.copy(items=current.items.toMutableList().also {it[index]=item}))
                 val from=target(current,item);val to=localPath(root,relative)
+                RawPackages.ensureParents(root,to)
                 if(Files.exists(to,LinkOption.NOFOLLOW_LINKS)) {require(!Files.exists(from) && sha256(to)==item.sourceSHA256) {"Undo recovery collision; every file was retained."}}
                 else {
                     Files.move(from,to,StandardCopyOption.ATOMIC_MOVE)

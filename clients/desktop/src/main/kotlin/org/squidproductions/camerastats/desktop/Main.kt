@@ -31,12 +31,15 @@ fun main(args:Array<String>) {
     val repositoryResult=remember {runCatching {Repository(JdbcDriver(root.resolve("reports.sqlite3")))}}
     val state=remember {AppState(repositoryResult.getOrNull(),gateway).also {model ->repositoryResult.exceptionOrNull()?.let {model.error="Local reports could not be opened. Existing bytes were preserved. ${it.message}"};gateway.failure={model.fail(it)}}}
     DisposableEffect(Unit) {onDispose {repositoryResult.getOrNull()?.close()}}
+    val updates=remember {DesktopUpdates(root,gateway)}
+    DisposableEffect(updates) {onDispose {updates.close()}}
     var footage by remember {mutableStateOf(false)}
     Window(onCloseRequest=::exitApplication,title="Shot Reporter",icon=BitmapPainter(gateway.icon),state=rememberWindowState(width=1280.dp,height=900.dp)) {
         androidx.compose.foundation.layout.Column {
             androidx.compose.foundation.layout.Row {
-                androidx.compose.material3.TextButton(onClick={footage=false}) {androidx.compose.material3.Text("Reports")}
-                androidx.compose.material3.TextButton(onClick={footage=true}) {androidx.compose.material3.Text("Desktop footage")}
+                androidx.compose.material3.TextButton(enabled=!updates.installing,onClick={footage=false}) {androidx.compose.material3.Text("Reports")}
+                androidx.compose.material3.TextButton(enabled=!updates.installing,onClick={footage=true}) {androidx.compose.material3.Text("Desktop footage")}
+                DesktopUpdateButton(updates,state,::exitApplication)
             }
             if(footage) key(state.report.id) {MediaWorkspace(state.report,state,root)} else FieldApp(state)
         }
@@ -97,6 +100,7 @@ fun packagedSelfTest(root:Path) {
     val pdf=gateway.pdf(restored);check(pdf.take(5).toByteArray().toString(Charsets.US_ASCII)=="%PDF-");Files.write(root.resolve("package-test.pdf"),pdf)
     check(gateway.brand.width>0 && gateway.icon.width==256)
     check(gateway.notices().contains("Independent JPEG Group"))
+    check(java.security.Signature.getInstance("Ed25519").algorithm=="Ed25519") {"Bundled update signature provider is missing"}
     check(Files.isDirectory(Path.of(System.getProperty("java.home"),"legal"))) {"Bundled runtime license files are missing"}
     Files.writeString(root.resolve("PASS.txt"),"PASS: bundled JVM, native SQLite durable reopen, camreport roundtrip, PDF rendering and suite image resources.\n")
 }

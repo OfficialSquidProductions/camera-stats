@@ -54,6 +54,8 @@ private final class DesktopScopedAccess:@unchecked Sendable {
     var suggestions:[DesktopSuggestion]=[]
     var frames:[DesktopFrame]=[]
     var playing=false
+    var redline:String {get {preferences.string(forKey:"desktop-redline-executable") ?? ProcessInfo.processInfo.environment["SHOT_REPORTER_REDLINE"] ?? ""} set {preferences.set(newValue,forKey:"desktop-redline-executable")}}
+    var brawHelper:String {get {preferences.string(forKey:"desktop-braw-helper") ?? ProcessInfo.processInfo.environment["SHOT_REPORTER_BRAW_HELPER"] ?? ""} set {preferences.set(newValue,forKey:"desktop-braw-helper")}}
     private var cancellationRequested=false
     private let preferences:UserDefaults
     private let scopeKey:String
@@ -70,10 +72,15 @@ private final class DesktopScopedAccess:@unchecked Sendable {
         if let data=try? url.bookmarkData(options:.withSecurityScope,includingResourceValuesForKeys:nil,relativeTo:nil) {var values=preferences.array(forKey:scopeKey) as? [Data] ?? [];if !values.contains(data) {values.append(data);preferences.set(values,forKey:scopeKey)}}
     }
     func chooseDirectory(_ title:String)->URL? {let panel=NSOpenPanel();panel.title=title;panel.canChooseDirectories=true;panel.canChooseFiles=false;panel.allowsMultipleSelection=false;guard panel.runModal() == .OK,let url=panel.url else {return nil};keepAccess(url);return url}
+    func chooseRedline() {let panel=NSOpenPanel();panel.title="Choose installed REDline executable";panel.canChooseDirectories=false;panel.canChooseFiles=true;panel.allowsMultipleSelection=false;guard panel.runModal() == .OK,let url=panel.url else {return};keepAccess(url);redline=url.path;notice="REDline selected. Register the working-copy folder again to refresh decoder availability."}
+    func chooseBrawHelper() {let panel=NSOpenPanel();panel.title="Choose locally built Shot Reporter BRAW helper";panel.canChooseDirectories=false;panel.canChooseFiles=true;panel.allowsMultipleSelection=false;guard panel.runModal() == .OK,let url=panel.url else {return};keepAccess(url);brawHelper=url.path;notice="BRAW helper selected. Register the isolated working-copy folder again to refresh decoder availability."}
     func request<T:Decodable>(_ payload:[String:Any],as type:T.Type,accept:@escaping (T)->Void) {
+        guard !DesktopUpdateActivity.installing else {error="An update is being installed. New media operations are paused until installation finishes or is cancelled.";return}
         guard !busy else {return};busy=true;error=nil;cancellationRequested=false
         do {
-            let input=try JSONSerialization.data(withJSONObject:payload,options:[.sortedKeys])
+            var configured=payload;if !redline.isEmpty {configured["redline"]=redline}
+            if !brawHelper.isEmpty {configured["brawHelper"]=brawHelper}
+            let input=try JSONSerialization.data(withJSONObject:configured,options:[.sortedKeys])
             let client=self.client
             client.prepare()
             Task {
@@ -96,8 +103,9 @@ private final class DesktopScopedAccess:@unchecked Sendable {
     func register(_ path:URL,camera:String,roll:String,load:String) {request(["command":"register","path":path.path,"camera":camera,"roll":roll,"load":load],as:DesktopMediaSnapshot.self) {self.snapshot=$0}}
     func relink(_ id:String,path:URL) {request(["command":"relink","rootID":id,"path":path.path],as:DesktopMediaSnapshot.self) {self.snapshot=$0}}
     func decode(_ index:Int64) {guard let selected else {return};playing=false;request(["command":"frame","clipID":selected,"index":index],as:DesktopFrame.self) {self.frame=$0}}
-    func play(reverse:Bool=false) {guard let selected else {return};let current=frame?.index ?? 0;let start=reverse ? max(0,current-47):current;request(["command":"frames","clipID":selected,"index":start],as:[DesktopFrame].self) {values in self.frames=reverse ? values.filter {$0.index<=current}.reversed():values;self.playing=true}}
+    func play(reverse:Bool=false) {guard let selected else {return};let current=frame?.index ?? 0;let count=clip?.metadata.container=="r3d" || clip?.metadata.container=="braw" ? 8:48;let start=reverse ? max(0,current-Int64(count-1)):current;request(["command":"frames","clipID":selected,"index":start],as:[DesktopFrame].self) {values in self.frames=reverse ? values.filter {$0.index<=current}.reversed():values;self.playing=true}}
     func approve(scene:String,take:String) {guard let frame else {return};request(["command":"approve","clipID":frame.clipId,"frameID":frame.id,"scene":scene,"take":take],as:DesktopMediaSnapshot.self) {self.snapshot=$0}}
+    func approvePackage(_ clip:DesktopClip,completeSourceConfirmed:Bool=false) {guard let fingerprint=clip.packageFingerprint else {return};request(["command":"approvePackage","clipID":clip.id,"fingerprint":fingerprint,"completeSourceConfirmed":completeSourceConfirmed],as:DesktopMediaSnapshot.self) {self.snapshot=$0}}
     func suggest(_ report:Report) {guard let selected else {return};do {request(["command":"suggestions","clipID":selected,"reportJSON":try reportObject(report)],as:[DesktopSuggestion].self) {self.suggestions=$0}} catch {self.error=error.localizedDescription}}
     func link(_ entry:String,report:Report) {guard let selected else {return};do {request(["command":"link","clipID":selected,"entryID":entry,"reportJSON":try reportObject(report)],as:DesktopMediaSnapshot.self) {self.snapshot=$0}} catch {self.error=error.localizedDescription}}
     func unlink(_ id:String) {request(["command":"unlink","associationID":id],as:DesktopMediaSnapshot.self) {self.snapshot=$0}}

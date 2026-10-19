@@ -3,7 +3,7 @@ plugins { kotlin("jvm"); id("org.jetbrains.kotlin.plugin.compose"); id("org.jetb
 kotlin { jvmToolchain(21); compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }; sourceSets.main { kotlin.srcDir("../shared-ui/src/main/kotlin") } }
 java { sourceCompatibility=JavaVersion.VERSION_17; targetCompatibility=JavaVersion.VERSION_17 }
 dependencies {
-    implementation(project(":core")); implementation(project(":jdbc"));implementation(project(":media-worker"))
+    implementation(project(":core")); implementation(project(":jdbc"));implementation(project(":media-worker"));implementation(project(":updates"));implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation(compose.desktop.currentOs);implementation(compose.material3)
     implementation("de.rototor.pdfbox:graphics2d:3.0.5")
     testImplementation(kotlin("test"));testImplementation(compose.desktop.uiTestJUnit4)
@@ -22,7 +22,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Msi,TargetFormat.Exe)
             packageName="Shot Reporter";packageVersion="0.1.1";description="Local camera reporting by Squid Productions";vendor="Squid Productions"
-            modules("java.sql","java.desktop","java.logging","java.naming","jdk.unsupported")
+            modules("java.sql","java.desktop","java.logging","java.naming","jdk.unsupported","jdk.crypto.ec")
             windows {iconFile.set(project.file("src/main/resources/icon.ico"));menuGroup="Squid Productions";shortcut=true;upgradeUuid="c3774fda-7962-4264-a9bc-c428176d12b4"}
         }
     }

@@ -1,5 +1,7 @@
 # Desktop media development milestone
 
+This records the initial standalone-media milestone. The later [RAW extension](RAW_DESKTOP.md) and [desktop updater](DESKTOP_UPDATES.md) describe the current local development branch and supersede the RAW-registration-only boundary below. Published alpha downloads remain separate.
+
 The newly attached 29-page plan and prior Revision 6 PDF are byte-identical: SHA-256 `1b47725109a77eb21a92f7e85b06e8b31f7062961d7d97c159bb5db0ca40242b`. Sections 6, 9–13, 16–18 and 25 guide this increment. Shot Reporter is the final name. This is development source and a local Mac test app, not the complete desktop release. Published 0.1.1 downloads and TestFlight builds remain unchanged.
 
 ## Working workflow

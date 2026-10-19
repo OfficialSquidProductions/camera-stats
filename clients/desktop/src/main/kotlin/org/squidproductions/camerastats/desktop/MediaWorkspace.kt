@@ -35,6 +35,8 @@ class DesktopMediaState(val home:Path):AutoCloseable {
     var reverse by mutableStateOf(false)
     var ffmpeg by mutableStateOf(System.getenv("SHOT_REPORTER_FFMPEG") ?: "")
     var ffprobe by mutableStateOf(System.getenv("SHOT_REPORTER_FFPROBE") ?: "")
+    var redline by mutableStateOf(System.getenv("SHOT_REPORTER_REDLINE") ?: "")
+    var brawHelper by mutableStateOf(System.getenv("SHOT_REPORTER_BRAW_HELPER") ?: "")
     private val pool=Executors.newSingleThreadExecutor {r->Thread(r,"Shot Reporter media worker").apply {isDaemon=true}}
     private var future:Future<*>?=null
     private var serial=0L
@@ -42,9 +44,10 @@ class DesktopMediaState(val home:Path):AutoCloseable {
     private var repository:MediaRepository?=null
     init {run({repo,_ ->repo.snapshot()}) {snapshot=it}}
     fun <T> run(action:(MediaRepository,MediaService)->T,done:(T)->Unit={}) {
+        if(DesktopUpdateActivity.installing) {error="Update installation is in progress. New media operations are paused.";return}
         if(busy) return
         busy=true;error=null;val operation=++serial
-        val decoder=Decoder(Path.of(ffmpeg.ifBlank {"missing-ffmpeg"}),Path.of(ffprobe.ifBlank {"missing-ffprobe"}))
+        val decoder=Decoder(Path.of(ffmpeg.ifBlank {"missing-ffmpeg"}),Path.of(ffprobe.ifBlank {"missing-ffprobe"}),redline.takeIf {it.isNotBlank()}?.let(Path::of),brawHelper.takeIf {it.isNotBlank()}?.let(Path::of))
         future=pool.submit {
             try {
                 val repo=repository ?: MediaRepository(home).also {repository=it};val service=MediaService(repo,decoder)
@@ -61,13 +64,22 @@ class DesktopMediaState(val home:Path):AutoCloseable {
     fun decode(index:Long) {val id=selected ?: return;playing=false;run({_,svc->svc.frame(id,index)}) {frame=it}}
     fun play(backwards:Boolean=false) {
         val id=selected ?: return;reverse=backwards
-        val current=frame?.index ?: 0L;val start=if(backwards) maxOf(0,current-47) else current
-        run({_,svc->svc.frames(id,start,48)}) {result ->frames=if(backwards) result.filter {it.index<=current}.reversed() else result;playing=true}
+        val count=if(snapshot.clips.single {it.id==id}.metadata.container in setOf("r3d","braw")) 8 else 48
+        val current=frame?.index ?: 0L;val start=if(backwards) maxOf(0,current-count+1) else current
+        run({_,svc->svc.frames(id,start,count)}) {result ->frames=if(backwards) result.filter {it.index<=current}.reversed() else result;playing=true}
     }
     fun cancel() {serial++;playing=false;future?.cancel(true);busy=false;refresh();error="Cancellation requested. The journal refreshes after the worker stops; retained copies can be resumed."}
     fun chooseTools() {
         val chooser=JFileChooser().apply {dialogTitle="Choose local FFmpeg bin folder";fileSelectionMode=JFileChooser.DIRECTORIES_ONLY}
         if(chooser.showOpenDialog(null)==JFileChooser.APPROVE_OPTION) {val dir=chooser.selectedFile.toPath();val ext=if(System.getProperty("os.name").startsWith("Windows")) ".exe" else "";ffmpeg=dir.resolve("ffmpeg$ext").toString();ffprobe=dir.resolve("ffprobe$ext").toString()}
+    }
+    fun chooseRedline() {
+        val chooser=JFileChooser().apply {dialogTitle="Choose installed REDline executable";fileSelectionMode=JFileChooser.FILES_ONLY}
+        if(chooser.showOpenDialog(null)==JFileChooser.APPROVE_OPTION) redline=chooser.selectedFile.absolutePath
+    }
+    fun chooseBrawHelper() {
+        val chooser=JFileChooser().apply {dialogTitle="Choose locally built Shot Reporter BRAW helper";fileSelectionMode=JFileChooser.FILES_ONLY}
+        if(chooser.showOpenDialog(null)==JFileChooser.APPROVE_OPTION) brawHelper=chooser.selectedFile.absolutePath
     }
     override fun close() {closed=true;serial++;future?.cancel(true);pool.execute {repository?.close()};pool.shutdown()}
 }
@@ -84,6 +96,7 @@ fun chooseMediaDirectory(title:String):Path? {
     var query by remember {mutableStateOf("")};var checked by remember {mutableStateOf(setOf<String>())}
     var camera by remember {mutableStateOf(report.defaults["camera"] ?: "A")};var roll by remember {mutableStateOf(report.defaults["roll"] ?: "A001")};var load by remember {mutableStateOf(report.defaults["load"] ?: identity())}
     var scene by remember {mutableStateOf("")};var take by remember {mutableStateOf("")};var index by remember {mutableStateOf("0")}
+    var completeSource by remember(state.selected) {mutableStateOf(false)}
     var template by remember {mutableStateOf(DesktopNaming.movie)};var presetName by remember {mutableStateOf("Movie")}
     var presetID by remember {mutableStateOf(identity())};var presetVersion by remember {mutableStateOf(1)};var presetMenu by remember {mutableStateOf(false)}
     val clip=state.snapshot.clips.firstOrNull {it.id==state.selected};val focus=remember {FocusRequester()}
@@ -113,9 +126,11 @@ fun chooseMediaDirectory(title:String):Path? {
             OutlinedTextField(load,{load=it},label={Text("Load identity")},modifier=Modifier.width(180.dp),singleLine=true,enabled=!state.busy)
             Button(enabled=!state.busy,onClick={chooseMediaDirectory("Register working-copy folder")?.let {path->state.run({_,svc->svc.register(path,camera,roll,load)})}}) {Text("Register folder")}
             OutlinedButton(enabled=!state.busy,onClick={state.chooseTools()}) {Text("Local decoder tools")}
+            OutlinedButton(enabled=!state.busy,onClick={state.chooseRedline()}) {Text("Choose REDline")}
+            OutlinedButton(enabled=!state.busy,onClick={state.chooseBrawHelper()}) {Text("BRAW helper")}
             if(state.busy) {CircularProgressIndicator(Modifier.size(22.dp));TextButton(onClick={state.cancel()}) {Text("Cancel · retain journal")}}
         }
-        Text("Sources stay unchanged. Standalone MOV/MP4 profile only; RAW registration does not enable RAW playback or renaming. Silent frame review; OCR is not implemented.",style=MaterialTheme.typography.bodySmall)
+        Text("Sources stay unchanged. RAW copies preserve all approved package members and internal names inside a named folder. RAW preview needs a configured vendor decoder. Silent review; OCR is not implemented.",style=MaterialTheme.typography.bodySmall)
         Row(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(14.dp)) {
             Column(Modifier.width(280.dp).fillMaxHeight(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(query,{query=it},label={Text("Search clips / confirmed slates")},singleLine=true,modifier=Modifier.fillMaxWidth())
@@ -138,6 +153,19 @@ fun chooseMediaDirectory(title:String):Path? {
                     Text(clip.originalName,style=MaterialTheme.typography.titleLarge)
                     Text("${clip.metadata.width} × ${clip.metadata.height} · ${clip.metadata.rate} · ${clip.metadata.duration}s · ${clip.metadata.frames ?: "unknown"} frames",style=MaterialTheme.typography.bodySmall)
                     if(clip.metadata.issue.isNotBlank()) Text(clip.metadata.issue,color=palette.error)
+                    clip.metadata.tags["timestampMeaning"]?.let {Text(it,style=MaterialTheme.typography.bodySmall)}
+                    if(clip.packageRoot!=null) {
+                        Text("Package inventory · ${clip.packageKind} · folder ${clip.packageRoot}",fontWeight=FontWeight.Bold)
+                        Text("Every listed file will be copied. Review for unrelated/private files before confirming. Internal names stay unchanged.",style=MaterialTheme.typography.bodySmall)
+                        state.snapshot.files.filter {it.id in clip.memberFileIds}.forEach {Text("${it.relative} · ${it.size} bytes · SHA ${it.sha256}",style=MaterialTheme.typography.bodySmall)}
+                        if(clip.packageIssue.isNotBlank()) Text(clip.packageIssue,color=palette.error)
+                        if(clip.packageKind=="red-rdc") {
+                            Text("REDline cannot detect a missing final span: a truncated package may open as a shorter clip. Compare this inventory with your complete-card copy or source manifest.",color=palette.error,style=MaterialTheme.typography.bodySmall)
+                            Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(completeSource,{completeSource=it},enabled=!state.busy);Text("I confirm this is the complete source package",style=MaterialTheme.typography.bodySmall)}
+                        }
+                        val approved=state.snapshot.packageApprovals.any {it.clipId==clip.id && it.fingerprint==clip.packageFingerprint}
+                        OutlinedButton(enabled=!state.busy && clip.packageIssue.isBlank() && (clip.packageKind!="red-rdc" || completeSource),onClick={state.run({_,svc->svc.approvePackage(clip.id,clip.packageFingerprint!!,completeSource)})}) {Text(if(approved) "Inventory confirmed" else "Confirm every package member")}
+                    }
                     state.frame?.let {frame ->
                         val bitmap=remember(frame.id) {runCatching {Image.makeFromEncoded(Files.readAllBytes(home.resolve(frame.png))).toComposeImageBitmap()}.getOrNull()}
                         Box(Modifier.fillMaxWidth().height(270.dp).focusRequester(focus).focusable().clickable {focus.requestFocus()}.onKeyEvent {event ->if(event.type==KeyEventType.KeyDown) {when(event.key) {Key.J->{if(!state.busy) state.play(true);true};Key.K->{state.playing=false;true};Key.L->{if(!state.busy) state.play();true};else->false}} else false},contentAlignment=Alignment.Center) {bitmap?.let {Image(it,"Decoded source frame ${frame.index}",Modifier.fillMaxSize(),contentScale=ContentScale.Fit)}}

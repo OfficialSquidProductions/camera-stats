@@ -14,7 +14,21 @@ struct ExportFile: FileDocument {
 }
 @main struct CameraStatsApp: App {
     @State private var store = Store()
-    var body: some Scene { WindowGroup { Workspace(store:store).frame(minWidth:320,minHeight:480) } }
+    #if os(macOS)
+    @State private var updates = DesktopUpdates()
+    @NSApplicationDelegateAdaptor(DesktopUpdateAppDelegate.self) private var appDelegate
+    #endif
+    var body: some Scene {
+        WindowGroup {
+            Workspace(store:store).frame(minWidth:320,minHeight:480)
+            #if os(macOS)
+                .task {updates.configure(store:store);appDelegate.updates=updates;updates.start()}
+            #endif
+        }
+        #if os(macOS)
+        .commands {DesktopUpdateCommands(updates:updates)}
+        #endif
+    }
 }
 struct Brand: View {
     var body: some View {
@@ -80,6 +94,7 @@ struct Workspace: View {
         }
         .fileExporter(isPresented:$exporting,document:exportFile,contentType:exportType,defaultFilename:exportName) { result in switch result { case .failure(let e): store.error = e.localizedDescription; case .success: UserDefaults.standard.set(store.report.revision,forKey:"exported-"+store.slot) } }
         .sheet(item:$pending) { item in importSheet(item) }
+        .onChange(of:pending != nil) {_,value in store.pendingImport=value}
         .sheet(item:$pdfPreview) { item in PDFReviewScreen(item:item) }
         .alert("Shot Reporter",isPresented:Binding(get:{store.error != nil},set:{if !$0 { store.error = nil }})) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
     }
