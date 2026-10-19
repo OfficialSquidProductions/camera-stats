@@ -2,7 +2,7 @@ name: Signed Android release verification
 on:
   push:
     branches: [windows-android-field-alpha]
-    paths: ['.github/workflows/android-release-smoke.yml']
+    paths: ['.github/workflows/android-release-smoke.yml', 'tools/android_release_smoke.py']
   workflow_dispatch:
     inputs:
       draft_tag:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Install the signed release on an isolated CI emulator; verify demo/reopen/update."""
 from pathlib import Path
-import os,re,subprocess,time,xml.etree.ElementTree as ET,json
+import os,re,subprocess,time,xml.etree.ElementTree as ET,json,atexit
 root=Path('android/build/qa/signed-release');root.mkdir(parents=True,exist_ok=True)
 apk=Path(os.environ['CAMERA_STATS_RELEASE_APK']).resolve()
 adb=Path(os.environ['ANDROID_HOME'])/'platform-tools/adb'
@@ -11,12 +11,20 @@ def run(*args):
     return p.stdout
 def screen(name):
     (root/(name+'.png')).write_bytes(run('exec-out','screencap','-p'))
+def diagnostics():
+    try:screen('last-screen');(root/'android-runtime.log').write_bytes(run('logcat','-d','-s','AndroidRuntime'))
+    except Exception:pass
+atexit.register(diagnostics)
 def snapshot():
-    run('shell','uiautomator','dump','/sdcard/camera-stats-ui.xml')
-    return run('exec-out','cat','/sdcard/camera-stats-ui.xml')
+    (root/'last-dump.log').write_bytes(run('shell','uiautomator','dump','/sdcard/camera-stats-ui.xml'))
+    data=run('exec-out','cat','/sdcard/camera-stats-ui.xml');(root/'last-ui.xml').write_bytes(data)
+    return data
 def wait_for(text,name):
     for attempt in range(12):
-        data=snapshot();tree=ET.fromstring(data)
+        data=snapshot()
+        try:tree=ET.fromstring(data)
+        except ET.ParseError:
+            time.sleep(1);continue
         matches=[n for n in tree.iter('node') if n.attrib.get('text')==text]
         if matches:
             (root/(name+'.xml')).write_bytes(data)
@@ -28,7 +36,7 @@ def launch():
 def tap(node):
     x1,y1,x2,y2=map(int,re.findall(r'\d+',node.attrib['bounds']))
     run('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2))
-run('install',str(apk));launch()
+run('install',str(apk));launch();screen('initial-release')
 tap(wait_for('Open The Last Light demo','initial'))
 wait_for('The Last Light · DEMO','demo');screen('demo-portrait')
 run('shell','am','force-stop',package);launch()
