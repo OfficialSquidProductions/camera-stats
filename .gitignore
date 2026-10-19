@@ -29,3 +29,5 @@ clients/**/build/
 clients/local.properties
 
 /.camera-gradle-ci/
+/.camera-avd/
+/.camera-android/

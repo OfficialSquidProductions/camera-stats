@@ -32,7 +32,7 @@ jobs:
       - name: Core, persistence, native PDF and Compose UI tests
         run: ./gradlew.bat -PskipAndroid=true :core:test :jdbc:test :desktop:test --no-daemon --console=plain
       - name: Package bundled-runtime Windows clients
-        run: ./gradlew.bat -PskipAndroid=true :desktop:packageExe :desktop:packageMsi --no-daemon --console=plain
+        run: ./gradlew.bat -PskipAndroid=true :desktop:createDistributable :desktop:packageExe :desktop:packageMsi --no-daemon --console=plain
       - name: Verify the packaged Windows runtime
         run: |
           $launchers = @(Get-ChildItem -Path desktop/build/compose/binaries/main/app -Recurse -Filter 'Camera Stats.exe')
@@ -62,6 +62,8 @@ jobs:
         working-directory: clients
     env:
       GRADLE_USER_HOME: ${{ github.workspace }}/.camera-gradle-ci
+      ANDROID_AVD_HOME: ${{ github.workspace }}/.camera-avd
+      ANDROID_USER_HOME: ${{ github.workspace }}/.camera-android
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -77,9 +79,12 @@ jobs:
       - name: Prepare AOSP emulator without accepting new licenses
         run: |
           set -euo pipefail
+          mkdir -p "$ANDROID_AVD_HOME" "$ANDROID_USER_HOME"
           if ! test -x "$ANDROID_HOME/emulator/emulator"; then timeout 12m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'emulator' </dev/null; fi
           if ! test -d "$ANDROID_HOME/system-images/android-35/default/x86_64"; then timeout 12m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'system-images;android-35;default;x86_64' </dev/null; fi
-          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name camera-qa --package 'system-images;android-35;default;x86_64' --device '${{ matrix.device }}'
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name camera-qa --path "$ANDROID_AVD_HOME/camera-qa.avd" --package 'system-images;android-35;default;x86_64' --device '${{ matrix.device }}'
+          "$ANDROID_HOME/emulator/emulator" -list-avds
+          test -f "$ANDROID_AVD_HOME/camera-qa.ini"
           if test -e /dev/kvm; then sudo setfacl -m u:$(id -u):rw /dev/kvm; fi
           trap 'cat "$RUNNER_TEMP/emulator.log" 2>/dev/null || true' EXIT
           "$ANDROID_HOME/emulator/emulator" -avd camera-qa -port 5554 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 -cores 2 >"$RUNNER_TEMP/emulator.log" 2>&1 &
