@@ -6,7 +6,7 @@ An early, local-only camera-reporting app for iPhone, iPad, and Mac. The complet
 
 ## Try the owner-test alpha
 
-Open `apple/CameraStats.xcodeproj`, choose `CameraStats`, and build for macOS 14+, iPhone, or iPad on iOS/iPadOS 17+. No package downloads or runtime network access are required. Signing is deliberately unconfigured until the existing Apple developer workflow is coordinated. Nothing has been submitted to TestFlight yet.
+Open `apple/CameraStats.xcodeproj`, choose `CameraStats`, and build for macOS 14+, iPhone, or iPad on iOS/iPadOS 17+. No package downloads or runtime network access are required. Signing is deliberately unconfigured until the existing Apple developer workflow is coordinated. Nothing has been submitted to TestFlight yet. The MIT source is published at https://github.com/OfficialSquidProductions/camera-stats; the download/status page is https://camera-stats-download.vastbow4.chatgpt.site while the requested custom domain is awaiting DNS verification.
 
 Tap **Open The Last Light demo** on Today. It opens a separate fictional report with 24 takes over the eight scenes from Production Desk's sample script, including Maya, Eli, Jonah, and the lighthouse. Read the full script from Today, inspect circled/MOS/pickup examples, preview a landscape PDF, or save/import a `.camreport`. Creating another demo never overwrites an existing report. The demo follows the shared The Last Light test story; this task does not modify the other applications.
 
@@ -24,6 +24,7 @@ Every accepted field edit commits a validated report snapshot to a local SQLite 
 python3 tools/build_apple.py
 swift tools/make_icons.swift "$PWD"
 swift test --package-path app
+python3 tools/verify_crash.py
 xcodebuild -project apple/CameraStats.xcodeproj -scheme CameraStats -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project apple/CameraStats.xcodeproj -scheme CameraStats -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
