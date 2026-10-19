@@ -132,6 +132,23 @@ class MediaTests {
             assertEquals(listOf(22L,23L),service.frames(clip.id,22,48).map {it.index})
         }
     }
+    @Test fun nonzeroSourcePresentationTimestampsArePreservedInsteadOfRebased() {
+        val output=temp.resolve("offset.mp4");val decoder=decoder()
+        decoder.execute(decoder.ffmpeg,listOf("-hide_banner","-nostdin","-v","error","-protocol_whitelist","file,pipe","-itsoffset","10","-i",System.getProperty("sampleMedia"),"-map","0:v:0","-c:v","copy","-copyts","-f","mp4",output.toString()))
+        val first=decoder.exactFrame(output,0,temp.resolve("first.png"));val seventh=decoder.exactFrame(output,7,temp.resolve("seventh.png"))
+        assertEquals("122880",first.first);assertEquals("130048",seventh.first)
+        val batch=decoder.frameBatch(output,0,24,temp.resolve("batch"));assertEquals(first.first,batch.first().second.first);assertEquals(seventh.first,batch[7].second.first)
+        val unshifted=decoder.exactFrame(Path.of(System.getProperty("sampleMedia")),7,temp.resolve("unshifted.png"));assertEquals(unshifted.second,seventh.second)
+    }
+    @Test fun mismatchedSlateAndLoadRemainVisibleInExplicitAssociationHistory() {
+        val (repo,service,report)=seed();repo.use {
+            val clip=approve(repo,service,report);val changed=report.copy(entries=report.entries.map {it.copy(values=it.values+mapOf("scene" to "DIFFERENT","take" to "99","load" to "another-load"))})
+            val suggestion=service.suggestions(clip.id,changed).single()
+            assertTrue(suggestion.conflicts.any {it.contains("slate scene")});assertTrue(suggestion.conflicts.any {it.contains("slate take")});assertTrue(suggestion.conflicts.contains("Media-load identity differs"))
+            service.link(clip.id,changed,changed.active.single().id)
+            assertTrue(repo.snapshot().associations.single().reasons.any {it.startsWith("Acknowledged discrepancy: Confirmed slate take")})
+        }
+    }
     @Test fun syntheticH264MOVAndMP4PassExactFrameAndRenamedCopyVerification() {
         for(extension in listOf("mov","mp4")) {
             val folder=Files.createDirectory(temp.resolve("h264-$extension"));val source=Files.createDirectory(folder.resolve("source"));val input=source.resolve("A001_H264.$extension")

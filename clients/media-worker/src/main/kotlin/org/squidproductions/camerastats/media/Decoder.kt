@@ -39,7 +39,7 @@ class Decoder(val ffmpeg:Path,val ffprobe:Path) {
     fun exactFrame(path:Path,index:Long,destination:Path):Pair<String,String> {
         require(index in 0..100_000_000) {"Invalid source frame index."}
         // Decode from the beginning, selecting presentation-order frame N; no guessed timestamp or fast seek.
-        val r=execute(ffmpeg,listOf("-hide_banner","-nostdin","-v","info","-protocol_whitelist","file,pipe","-enable_drefs","0","-noautorotate","-i",path.toAbsolutePath().toString(),"-map","0:v:0","-an","-sn","-vf","select=eq(n\\,$index),showinfo,scale=960:-2","-frames:v","1","-fps_mode","passthrough","-c:v","png","-f","image2pipe","pipe:1"),timeout=300,limit=16*1024*1024)
+        val r=execute(ffmpeg,listOf("-hide_banner","-nostdin","-v","info","-copyts","-protocol_whitelist","file,pipe","-enable_drefs","0","-noautorotate","-i",path.toAbsolutePath().toString(),"-map","0:v:0","-an","-sn","-vf","select=eq(n\\,$index),showinfo,scale=960:-2","-frames:v","1","-fps_mode","passthrough","-c:v","png","-f","image2pipe","pipe:1"),timeout=300,limit=16*1024*1024)
         require(r.bytes.size>8 && r.bytes.take(8).toByteArray().contentEquals(byteArrayOf(-119,80,78,71,13,10,26,10))) {"Frame $index does not exist or could not be decoded."}
         val pts=Regex("\\bpts:\\s*(-?\\d+)").find(r.error)?.groupValues?.get(1) ?: error("Decoder did not identify the exact frame timestamp.")
         writeNew(destination,r.bytes)
@@ -48,7 +48,7 @@ class Decoder(val ffmpeg:Path,val ffprobe:Path) {
     fun frameBatch(path:Path,start:Long,count:Int,directory:Path):List<Pair<Long,Pair<String,Path>>> {
         require(start>=0 && count in 1..60);Files.createDirectory(directory)
         val end=Math.addExact(start,count.toLong()-1)
-        val r=execute(ffmpeg,listOf("-hide_banner","-nostdin","-v","info","-protocol_whitelist","file,pipe","-enable_drefs","0","-noautorotate","-i",path.toAbsolutePath().toString(),"-map","0:v:0","-an","-sn","-vf","select=between(n\\,$start\\,$end),showinfo,scale=960:-2","-frames:v",count.toString(),"-fps_mode","passthrough","-start_number","0","-c:v","png","-f","image2",directory.resolve("frame-%03d.png").toString()),timeout=300)
+        val r=execute(ffmpeg,listOf("-hide_banner","-nostdin","-v","info","-copyts","-protocol_whitelist","file,pipe","-enable_drefs","0","-noautorotate","-i",path.toAbsolutePath().toString(),"-map","0:v:0","-an","-sn","-vf","select=between(n\\,$start\\,$end),showinfo,scale=960:-2","-frames:v",count.toString(),"-fps_mode","passthrough","-start_number","0","-c:v","png","-f","image2",directory.resolve("frame-%03d.png").toString()),timeout=300)
         val pts=Regex("\\bpts:\\s*(-?\\d+)").findAll(r.error).map {it.groupValues[1]}.toList()
         val images=Files.list(directory).use {it.sorted().toList()}
         require(images.isNotEmpty() && images.size==pts.size && images.size<=count) {"Decoded frame sequence has no exact timestamp mapping."}

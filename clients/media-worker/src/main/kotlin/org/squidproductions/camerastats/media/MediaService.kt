@@ -73,7 +73,12 @@ class MediaService(val repo:MediaRepository,val decoder:Decoder) {
             if(values["camera"]==root.camera) {score+=15;reasons+="Camera ${root.camera}"} else if(!values["camera"].isNullOrBlank()) conflicts+="Camera differs"
             if(values["roll"]==root.roll) {score+=15;reasons+="Roll ${root.roll}"} else if(!values["roll"].isNullOrBlank()) conflicts+="Roll differs"
             if(values["load"]==root.load) {score+=15;reasons+="Exact media-load identity"}
+            else if(!values["load"].isNullOrBlank()) conflicts+="Media-load identity differs"
             if(slate!=null && values["scene"]==slate.scene && values["take"]==slate.take) {score+=10;reasons+="Confirmed scene/take (weak key alone)"}
+            if(slate!=null) {
+                if(!values["scene"].isNullOrBlank() && values["scene"]!=slate.scene) conflicts+="Confirmed slate scene ${slate.scene} differs from report scene ${values["scene"]}"
+                if(!values["take"].isNullOrBlank() && values["take"]!=slate.take) conflicts+="Confirmed slate take ${slate.take} differs from report take ${values["take"]}"
+            }
             MatchSuggestion(entry.id,"${values["scene"].orEmpty()} / ${values["take"].orEmpty()} · ${values["camera"].orEmpty()} / ${values["roll"].orEmpty()}",score,reasons,false,conflicts)
         }.sortedWith(compareByDescending<MatchSuggestion> {it.score}.thenBy {it.entryId})
         return candidates.map {c->c.copy(ambiguous=c.score==0 || candidates.count {it.score==c.score}>1)}
