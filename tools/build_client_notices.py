@@ -10,5 +10,5 @@ for name,record in sorted(sources.items()):
     data=(folder/name).read_bytes()
     assert hashlib.sha256(data).hexdigest()==record['sha256'],name
     parts.append('\n'+'='*72+'\n'+name+'\nSource: '+record['source']+'\n\n'+data.decode('utf-8'))
-(folder/'OPEN_SOURCE_NOTICES.txt').write_text('\n'.join(parts))
+(folder/'OPEN_SOURCE_NOTICES.txt').write_bytes('\n'.join(parts).encode('utf-8'))
 print('Verified and assembled',len(sources),'original notices.')

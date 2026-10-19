@@ -44,7 +44,10 @@ wait_for('The Last Light · DEMO','reopened');screen('demo-reopened')
 run('install','-r',str(apk));launch()
 wait_for('The Last Light · DEMO','updated');screen('demo-after-update')
 run('shell','settings','put','system','accelerometer_rotation','0')
-run('shell','settings','put','system','user_rotation','1')
+physical=run('shell','wm','size').decode()
+width,height=map(int,re.search(r'Physical size: (\d+)x(\d+)',physical).groups())
+# Tablets such as Pixel C naturally start in landscape; phones naturally start in portrait.
+run('shell','settings','put','system','user_rotation','0' if width>height else '1')
 for attempt in range(12):
     tree=ET.fromstring(snapshot())
     nodes=[n for n in tree.iter('node') if n.attrib.get('package')==package and 'bounds' in n.attrib]

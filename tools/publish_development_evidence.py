@@ -3,16 +3,24 @@
 
 Uses only the ephemeral job token supplied by GitHub. Never publishes the draft.
 """
-import argparse,glob,hashlib,os,shutil,subprocess,tempfile,zipfile
+import argparse,glob,hashlib,os,shutil,subprocess,tempfile,zipfile,time
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--label',required=True);p.add_argument('--evidence',action='append',default=[]);p.add_argument('--asset',action='append',default=[]);a=p.parse_args()
 root=Path(__file__).resolve().parents[1]
 sha=os.environ['GITHUB_SHA'];repository=os.environ['GITHUB_REPOSITORY'];tag='field-clients-validation-'+sha[:12]
-def gh(*args,check=True):return subprocess.run(['gh',*args,'--repo',repository],check=check,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+def gh(*args,check=True):
+    for attempt in range(3):
+        result=subprocess.run(['gh',*args,'--repo',repository],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        if result.returncode==0:break
+        if not any(marker in result.stderr for marker in ['HTTP 502','HTTP 503','HTTP 504','connection reset','TLS handshake timeout','unexpected EOF']):break
+        time.sleep(2*(attempt+1))
+    if check and result.returncode:raise RuntimeError('GitHub draft operation failed: '+safe_error(result))
+    return result
+def safe_error(result):return result.stderr.replace(os.environ.get('GH_TOKEN','not-a-token'),'[redacted]')[-1800:]
 existing=gh('release','view',tag,check=False)
 if existing.returncode:
     result=gh('release','create',tag,'--draft','--target',sha,'--title','Camera Stats development validation '+sha[:12],'--notes','Development build evidence only. Not a public platform release. Review tests and runtime validation before publication.',check=False)
-    if result.returncode and gh('release','view',tag,check=False).returncode:raise RuntimeError('Could not create owner-visible draft validation release.')
+    if result.returncode and gh('release','view',tag,check=False).returncode:raise RuntimeError('Could not create owner-visible draft validation release: '+safe_error(result))
 with tempfile.TemporaryDirectory(prefix='camera-ci-evidence-') as temp:
     output=Path(temp);assets=[]
     archive=output/(a.label+'-evidence.zip')
