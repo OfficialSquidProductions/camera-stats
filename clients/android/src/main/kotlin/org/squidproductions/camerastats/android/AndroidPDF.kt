@@ -16,7 +16,7 @@ object AndroidPDF {
         fun begin() {
             page?.let {document.finishPage(it)};count++;page=document.startPage(PdfDocument.PageInfo.Builder(842,595,count).create());y=68f
             val header=Paint(paint).apply {textSize=14f;typeface=Typeface.create("sans-serif",Typeface.BOLD)}
-            page!!.canvas.drawText("CAMERA STATS · Camera Report",28f,30f,header);page!!.canvas.drawText("A Squid Productions Software · Revision ${report.revision} · Page $count",28f,46f,paint)
+            page!!.canvas.drawText("Shot Reporter · Camera Report",28f,30f,header);page!!.canvas.drawText("A Squid Productions Software · Revision ${report.revision} · Page $count",28f,46f,paint)
         }
         try {
             begin()

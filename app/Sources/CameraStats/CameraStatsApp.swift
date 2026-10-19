@@ -20,7 +20,7 @@ struct Brand: View {
     var body: some View {
         HStack(spacing:12) {
             Image("SPMark").resizable().scaledToFit().frame(width:36,height:48).accessibilityHidden(true)
-            VStack(alignment:.leading,spacing:3) { Text("CAMERA STATS").font(.system(.title2,design:.rounded,weight:.heavy)); Text("A Squid Productions Software").font(.caption).foregroundStyle(.secondary) }
+            VStack(alignment:.leading,spacing:3) { Text("Shot Reporter").font(.system(.title2,design:.rounded,weight:.heavy)); Text("A Squid Productions Software").font(.caption).foregroundStyle(.secondary) }
         }.padding(.vertical,8).accessibilityElement(children:.combine)
     }
 }
@@ -39,7 +39,7 @@ struct Workspace: View {
     @State private var exportFile: ExportFile?
     @State private var exporting = false
     @State private var exportType: UTType = .camreport
-    @State private var exportName = "Camera-Report.camreport"
+    @State private var exportName = "Shot-Reporter.camreport"
     @State private var selected: String?
     @State private var search = ""
     @State private var circleOnly = false
@@ -68,7 +68,7 @@ struct Workspace: View {
         .fileExporter(isPresented:$exporting,document:exportFile,contentType:exportType,defaultFilename:exportName) { result in switch result { case .failure(let e): store.error = e.localizedDescription; case .success: UserDefaults.standard.set(store.report.revision,forKey:"exported-"+store.slot) } }
         .sheet(item:$pending) { item in importSheet(item) }
         .sheet(item:$pdfPreview) { item in PDFReviewScreen(item:item) }
-        .alert("Camera Stats",isPresented:Binding(get:{store.error != nil},set:{if !$0 { store.error = nil }})) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
+        .alert("Shot Reporter",isPresented:Binding(get:{store.error != nil},set:{if !$0 { store.error = nil }})) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
     }
     func readImport(_ url:URL) {
         do {
@@ -191,8 +191,8 @@ struct Workspace: View {
             Section("About") { Brand(); Text("0.1 owner-test alpha · macOS 14 / iOS 17 or later. Local files only. No accounts, telemetry, or cloud services. Export a backup to a second local destination regularly.").font(.caption) }
         }.formStyle(.grouped).scrollContentBackground(.hidden).background(Color("Canvas"))
     }
-    func export(_ type:UTType,_ ext:String,_ data:()->Data) { exportType = type; exportName = "Camera-Report-r\(store.report.revision).\(ext)"; exportFile = ExportFile(data:data()); exporting = true }
-    func export(_ type:UTType,_ ext:String,_ data:() throws ->Data) { do { exportType = type; exportName = "Camera-Report-r\(store.report.revision).\(ext)"; exportFile = ExportFile(data:try data()); exporting = true } catch {store.error = error.localizedDescription} }
+    func export(_ type:UTType,_ ext:String,_ data:()->Data) { exportType = type; exportName = "Shot-Reporter-r\(store.report.revision).\(ext)"; exportFile = ExportFile(data:data()); exporting = true }
+    func export(_ type:UTType,_ ext:String,_ data:() throws ->Data) { do { exportType = type; exportName = "Shot-Reporter-r\(store.report.revision).\(ext)"; exportFile = ExportFile(data:try data()); exporting = true } catch {store.error = error.localizedDescription} }
     struct ImportReview: Identifiable { let id = UUID(); let package:Exchange.Package }
     func importSheet(_ item:ImportReview) -> some View {
         let p = item.package; let preview = try? Exchange.preview(local:store.report,incoming:p)
@@ -219,7 +219,7 @@ struct PDFReviewScreen: View {
                 Button("Done") { dismiss() }
                 Button("Save PDF…") { exporting = true }
             }
-            .fileExporter(isPresented:$exporting,document:ExportFile(data:item.data),contentType:.pdf,defaultFilename:"Camera-Report-r\(item.revision).pdf") { result in if case .failure(let e) = result { error = e.localizedDescription } }
+            .fileExporter(isPresented:$exporting,document:ExportFile(data:item.data),contentType:.pdf,defaultFilename:"Shot-Reporter-r\(item.revision).pdf") { result in if case .failure(let e) = result { error = e.localizedDescription } }
             .alert("PDF export",isPresented:Binding(get:{error != nil},set:{if !$0 {error = nil}})) { Button("OK") {error = nil} } message:{Text(error ?? "")}
         }.frame(minWidth:320,minHeight:450)
     }

@@ -20,4 +20,4 @@ func bounds(_ image:NSBitmapImageRep, mark:Bool)->[Int] {
 let tile=bounds(ours,mark:false), otherTile=bounds(reference,mark:false), mark=bounds(ours,mark:true), otherMark=bounds(reference,mark:true)
 precondition(tile == otherTile,"Suite tile bounds differ")
 precondition(zip(mark,otherMark).allSatisfy{abs($0-$1)<=1},"Suite mark scale/position differs")
-print("PASS: Camera Stats tile bounds \(tile), mark bounds \(mark); reference \(otherMark). iOS 1024px opaque RGB. Source logo remains separate and unchanged.")
+print("PASS: Shot Reporter tile bounds \(tile), mark bounds \(mark); reference \(otherMark). iOS 1024px opaque RGB. Source logo remains separate and unchanged.")

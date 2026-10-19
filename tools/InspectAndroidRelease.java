@@ -25,15 +25,15 @@ public final class InspectAndroidRelease {
                 attrs.put(xml.getAttributeName(i),value);
             }
             switch(xml.getName()) {
-                case "manifest" -> {require("org.squidproductions.camerastats".equals(attrs.get("package")),"Unexpected package");require("1".equals(attrs.get("versionCode")) && "0.1.0".equals(attrs.get("versionName")),"Unexpected release version");manifest=true;}
+                case "manifest" -> {require("org.squidproductions.camerastats".equals(attrs.get("package")),"Unexpected package");require("2".equals(attrs.get("versionCode")) && "0.1.1".equals(attrs.get("versionName")),"Unexpected release version");manifest=true;}
                 case "uses-sdk" -> {require("26".equals(attrs.get("minSdkVersion")) && "35".equals(attrs.get("targetSdkVersion")),"Unexpected SDK range");sdk=true;}
-                case "application" -> {require(!"true".equals(attrs.get("debuggable")),"Release must not be debuggable");require("false".equals(attrs.get("allowBackup")),"OS backup must be disabled");application=true;}
+                case "application" -> {require("Shot Reporter".equals(attrs.get("label")),"Unexpected display name");require(!"true".equals(attrs.get("debuggable")),"Release must not be debuggable");require("false".equals(attrs.get("allowBackup")),"OS backup must be disabled");application=true;}
                 case "uses-permission", "uses-permission-sdk-23" -> permissions.add(attrs.get("name"));
             }
         }
         require(manifest && sdk && application,"Incomplete manifest");
         for(String permission:permissions) require("org.squidproductions.camerastats.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION".equals(permission),"Unexpected permission: "+permission);
-        System.out.println("PASS: Camera Stats 0.1.0 (1), minimum API 26, target API 35, release not debuggable, OS backup disabled; no Internet/camera/microphone/broad-storage permission.");
+        System.out.println("PASS: Shot Reporter 0.1.1 (2), minimum API 26, target API 35, release not debuggable, OS backup disabled; no Internet/camera/microphone/broad-storage permission.");
         System.out.println("Manifest permissions: "+permissions);
     }
     private static void require(boolean value,String message) {if(!value) throw new IllegalStateException(message);}

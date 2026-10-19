@@ -22,13 +22,16 @@ fun main(args:Array<String>) {
         require(args.size==2) { "--self-test requires an isolated output directory" }
         packagedSelfTest(Path.of(args[1]));return
     }
+    if(args.firstOrNull()=="--verify-report-upgrade") {
+        require(args.size==3);verifyReportUpgrade(Path.of(args[1]),Path.of(args[2]));return
+    }
     application {
-    val root=remember {Path.of(System.getenv("LOCALAPPDATA") ?: Path.of(System.getProperty("user.home"),".local","share").toString(),"Squid Productions","Camera Stats")}
+    val root=remember {reportDataRoot()}
     val gateway=remember {DesktopGateway(root)}
     val repositoryResult=remember {runCatching {Repository(JdbcDriver(root.resolve("reports.sqlite3")))}}
     val state=remember {AppState(repositoryResult.getOrNull(),gateway).also {model ->repositoryResult.exceptionOrNull()?.let {model.error="Local reports could not be opened. Existing bytes were preserved. ${it.message}"};gateway.failure={model.fail(it)}}}
     DisposableEffect(Unit) {onDispose {repositoryResult.getOrNull()?.close()}}
-    Window(onCloseRequest=::exitApplication,title="Camera Stats",icon=BitmapPainter(gateway.icon),state=rememberWindowState(width=1100.dp,height=840.dp)) {FieldApp(state)}
+    Window(onCloseRequest=::exitApplication,title="Shot Reporter",icon=BitmapPainter(gateway.icon),state=rememberWindowState(width=1100.dp,height=840.dp)) {FieldApp(state)}
 }
 }
 class DesktopGateway(private val root:Path):PlatformGateway {
@@ -41,17 +44,17 @@ class DesktopGateway(private val root:Path):PlatformGateway {
     override fun demo():Report=Exchange.decode(resource("demo-report.json"))
     override fun notices():String=resource("open-source-notices.txt").toString(Charsets.UTF_8)
     override fun preference(key:String,fallback:String):String=prefs.getProperty(key,fallback)
-    override fun preference(key:String,value:String,write:Boolean) {prefs.setProperty(key,value);runCatching {Files.createDirectories(root);Files.newOutputStream(root.resolve("preferences.properties")).use {prefs.store(it,"Camera Stats local display preferences")}}}
+    override fun preference(key:String,value:String,write:Boolean) {prefs.setProperty(key,value);runCatching {Files.createDirectories(root);Files.newOutputStream(root.resolve("preferences.properties")).use {prefs.store(it,"Shot Reporter local display preferences")}}}
     override fun importFile(complete:(ByteArray?)->Unit) {SwingUtilities.invokeLater {
         try {
-            val chooser=JFileChooser().apply {dialogTitle="Import Camera Stats report";fileFilter=FileNameExtensionFilter("Camera Stats reports (*.camreport)","camreport");isAcceptAllFileFilterUsed=false}
+            val chooser=JFileChooser().apply {dialogTitle="Import Shot Reporter report";fileFilter=FileNameExtensionFilter("Shot Reporter reports (*.camreport)","camreport");isAcceptAllFileFilterUsed=false}
             if(chooser.showOpenDialog(null)!=JFileChooser.APPROVE_OPTION) {complete(null);return@invokeLater}
             val bytes=Files.newInputStream(chooser.selectedFile.toPath()).use {it.readNBytes(Exchange.LIMIT+1)};require(bytes.size<=Exchange.LIMIT) {"Report exceeds the 32 MiB alpha limit."};complete(bytes)
         } catch(e:Exception) {failure(e)}
     }}
     override fun exportFile(name:String,mime:String,bytes:ByteArray,complete:()->Unit) {SwingUtilities.invokeLater {
         try {
-            val chooser=JFileChooser().apply {dialogTitle="Save Camera Stats report";selectedFile=java.io.File(name)}
+            val chooser=JFileChooser().apply {dialogTitle="Save Shot Reporter report";selectedFile=java.io.File(name)}
             if(chooser.showSaveDialog(null)!=JFileChooser.APPROVE_OPTION) return@invokeLater
             val path=exportDestination(chooser.selectedFile.toPath().toAbsolutePath(),name.substringAfterLast('.'))
             if(Files.exists(path) && JOptionPane.showConfirmDialog(null,"Replace ${path.fileName}?","Replace existing file",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return@invokeLater
@@ -87,4 +90,21 @@ fun packagedSelfTest(root:Path) {
     check(gateway.notices().contains("Independent JPEG Group"))
     check(Files.isDirectory(Path.of(System.getProperty("java.home"),"legal"))) {"Bundled runtime license files are missing"}
     Files.writeString(root.resolve("PASS.txt"),"PASS: bundled JVM, native SQLite durable reopen, camreport roundtrip, PDF rendering and suite image resources.\n")
+}
+
+/** The legacy directory is part of the upgrade contract; branding never changes report ownership. */
+fun reportDataRoot():Path=Path.of(System.getenv("LOCALAPPDATA") ?: Path.of(System.getProperty("user.home"),".local","share").toString(),"Squid Productions","Camera Stats")
+
+/** Read an old installed runtime's synthetic report from the normal data location in isolated CI. */
+fun verifyReportUpgrade(expectedFile:Path,output:Path) {
+    val root=reportDataRoot();val expected=Exchange.read(Files.readAllBytes(expectedFile)).report
+    val restored=Repository(JdbcDriver(root.resolve("reports.sqlite3"))).use {repo ->
+        val slot=checkNotNull(repo.active());val current=repo.load(slot).report
+        check(current==expected);check(repo.load(slot,true).report.active.size==3);check(repo.list().size==1);current
+    }
+    val host=DesktopGateway(root);check(host.preference("theme","System")=="Dark")
+    Files.createDirectories(output);val bytes=Exchange.export(restored,"Shot Reporter upgrade verification")
+    check(Exchange.read(bytes).report==expected);durableExport(output.resolve("Shot-Reporter-upgraded.camreport"),bytes)
+    durableExport(output.resolve("Shot-Reporter-upgraded.pdf"),host.pdf(restored))
+    Files.writeString(output.resolve("PASS.txt"),"PASS: Camera Stats 0.1.0 installed runtime -> Shot Reporter 0.1.1 MSI upgrade; normal legacy data directory, active report, every field/history/identity/revision, previous snapshot, preferences and camreport roundtrip preserved.\n")
 }

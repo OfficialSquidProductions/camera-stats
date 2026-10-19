@@ -1,7 +1,7 @@
 name: Field clients
 on:
   push:
-    branches: [main, windows-android-field-alpha]
+    branches: [main, windows-android-field-alpha, shot-reporter-rebrand]
     paths: ['clients/**', 'fixtures/**', 'licenses/clients/**', 'tools/fixtures/**', 'tools/*client*', 'tools/generate_cross_platform_fixtures.py', 'tools/publish_development_evidence.py', '.github/workflows/field-clients.yml']
   workflow_dispatch:
 permissions:
@@ -38,13 +38,32 @@ jobs:
         run: ./gradlew.bat -PskipAndroid=true :desktop:createDistributable :desktop:packageExe :desktop:packageMsi --no-daemon --console=plain
       - name: Verify the packaged Windows runtime
         run: |
-          $launchers = @(Get-ChildItem -Path desktop/build/compose/binaries/main/app -Recurse -Filter 'Camera Stats.exe')
-          if ($launchers.Count -ne 1) { throw "Expected one packaged Camera Stats launcher" }
+          $launchers = @(Get-ChildItem -Path desktop/build/compose/binaries/main/app -Recurse -Filter 'Shot Reporter.exe')
+          if ($launchers.Count -ne 1) { throw "Expected one packaged Shot Reporter launcher" }
           $qa = Join-Path (Get-Location) 'desktop/build/qa/packaged-runtime'
           New-Item -ItemType Directory -Force -Path $qa | Out-Null
           $process = Start-Process -FilePath $launchers[0].FullName -ArgumentList '--self-test', ('"' + $qa + '"') -Wait -PassThru
           if ($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $qa 'PASS.txt'))) { throw "Packaged-runtime check failed" }
           Get-Content (Join-Path $qa 'PASS.txt')
+      - name: Install previous public Camera Stats and seed a synthetic report using its own runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v0.1.0-alpha.2 --pattern Camera-Stats-Windows-0.1.0-alpha.2.msi --dir desktop/build/qa/previous --repo "$env:GITHUB_REPOSITORY"
+          $old = Join-Path (Get-Location) 'desktop/build/qa/previous/Camera-Stats-Windows-0.1.0-alpha.2.msi'
+          if ((Get-FileHash $old -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'a20ae61b1cc88f941edd520531ca18a59fdc23433ed36addb24291f877fdcd0d') { throw 'Previous MSI checksum mismatch' }
+          $install = Start-Process msiexec.exe -ArgumentList '/i', ('"' + $old + '"'), '/qn', '/norestart' -Wait -PassThru
+          if ($install.ExitCode -notin 0,3010) { throw "Previous MSI failed: $($install.ExitCode)" }
+          $qa = Join-Path (Get-Location) 'desktop/build/qa/previous/report'
+          New-Item -ItemType Directory -Force -Path $qa | Out-Null
+          $oldLauncher = Join-Path $env:ProgramFiles 'Camera Stats/Camera Stats.exe'
+          $process = Start-Process $oldLauncher -ArgumentList '--self-test', ('"' + $qa + '"') -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $qa 'PASS.txt'))) { throw 'Old runtime could not seed report' }
+          $data = Join-Path $env:LOCALAPPDATA 'Squid Productions/Camera Stats'
+          if (Test-Path $data) { throw 'Upgrade test requires an empty isolated profile' }
+          New-Item -ItemType Directory -Path $data | Out-Null
+          Copy-Item (Join-Path $qa 'qa.sqlite3') (Join-Path $data 'reports.sqlite3')
+          'theme=Dark' | Set-Content (Join-Path $data 'preferences.properties')
       - name: Install and exercise the MSI on the isolated Windows runner
         run: |
           $msi = @(Get-ChildItem desktop/build/compose/binaries/main/msi -Filter '*.msi')
@@ -52,12 +71,21 @@ jobs:
           $log = Join-Path (Get-Location) 'desktop/build/qa/msi-install.log'
           $install = Start-Process msiexec.exe -ArgumentList '/i', ('"' + $msi[0].FullName + '"'), '/qn', '/norestart', '/l*v', ('"' + $log + '"') -Wait -PassThru
           if ($install.ExitCode -notin 0,3010) { throw "MSI installation failed: $($install.ExitCode)" }
-          $launcher = Join-Path $env:ProgramFiles 'Camera Stats/Camera Stats.exe'
+          $launcher = Join-Path $env:ProgramFiles 'Shot Reporter/Shot Reporter.exe'
           if (!(Test-Path $launcher)) { throw 'Installed launcher is missing' }
           $qa = Join-Path (Get-Location) 'desktop/build/qa/installed-runtime'
           New-Item -ItemType Directory -Force -Path $qa | Out-Null
           $process = Start-Process $launcher -ArgumentList '--self-test', ('"' + $qa + '"') -Wait -PassThru
           if ($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $qa 'PASS.txt'))) { throw 'Installed runtime check failed' }
+          Get-Content (Join-Path $qa 'PASS.txt')
+      - name: Verify installed rebrand preserves the old normal-location report and removes the old product
+        run: |
+          $launcher = Join-Path $env:ProgramFiles 'Shot Reporter/Shot Reporter.exe'
+          $expected = Join-Path (Get-Location) 'desktop/build/qa/previous/report/package-test.camreport'
+          $qa = Join-Path (Get-Location) 'desktop/build/qa/rebrand-upgrade'
+          $process = Start-Process $launcher -ArgumentList '--verify-report-upgrade', ('"' + $expected + '"'), ('"' + $qa + '"') -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $qa 'PASS.txt'))) { throw 'Installed rebrand lost previous report data' }
+          if (Test-Path (Join-Path $env:ProgramFiles 'Camera Stats/Camera Stats.exe')) { throw 'Old product was not removed by MSI upgrade' }
           Get-Content (Join-Path $qa 'PASS.txt')
       - name: Preserve development packages and QA in an owner-visible draft
         if: always()

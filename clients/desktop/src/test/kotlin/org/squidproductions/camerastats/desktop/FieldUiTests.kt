@@ -34,7 +34,7 @@ class FieldUiTests {
             assertEquals(4,repo.load(state.slot).report.active.size)
             ui.onNodeWithText("Today",useUnmergedTree=false).performClick()
             ui.onNodeWithText("Open-source notices").performScrollTo().performClick()
-            ui.onNodeWithText("CAMERA STATS — OPEN-SOURCE NOTICES",substring=true).assertIsDisplayed()
+            ui.onNodeWithText("Shot Reporter — OPEN-SOURCE NOTICES",substring=true).assertIsDisplayed()
             ui.onNodeWithText("Done",substring=false).performClick()
         } finally {repo.close()}
     }

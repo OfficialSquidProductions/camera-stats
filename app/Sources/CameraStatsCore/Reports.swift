@@ -14,12 +14,12 @@ public enum Reports {
         func esc(_ s: String) -> String { s.replacingOccurrences(of:"&",with:"&amp;").replacingOccurrences(of:"<",with:"&lt;").replacingOccurrences(of:">",with:"&gt;").replacingOccurrences(of:"\"",with:"&quot;") }
         let fields = Schema.take + Schema.settings
         let rows = report.active.map { e in "<tr>" + fields.map{"<td>\(esc(e.values[$0.id,default:""]))</td>"}.joined() + "<td>\(esc(e.flags.sorted().joined(separator:", ")))</td></tr>" }.joined()
-        return "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Camera Stats report</title><style>body{font:14px system-ui;margin:32px;color:#241d21}table{border-collapse:collapse}td,th{border:1px solid #777;padding:8px;white-space:pre-wrap}thead{display:table-header-group}</style><h1>\(esc(report.values["title",default:"Untitled"]))</h1><p>A Squid Productions Software · Revision \(report.revision) · \(report.missing.isEmpty ? "Ready for Submission" : "DRAFT — \(report.missing.count) missing requirements")</p><p>\(esc(report.values.sorted{$0.key < $1.key}.map{"\($0.key): \($0.value)"}.joined(separator:" · ")))</p><table><thead><tr>" + fields.map{"<th>\(esc($0.title))</th>"}.joined() + "<th>Flags</th></tr></thead><tbody>\(rows)</tbody></table></html>"
+        return "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Shot Reporter report</title><style>body{font:14px system-ui;margin:32px;color:#241d21}table{border-collapse:collapse}td,th{border:1px solid #777;padding:8px;white-space:pre-wrap}thead{display:table-header-group}</style><h1>\(esc(report.values["title",default:"Untitled"]))</h1><p>A Squid Productions Software · Revision \(report.revision) · \(report.missing.isEmpty ? "Ready for Submission" : "DRAFT — \(report.missing.count) missing requirements")</p><p>\(esc(report.values.sorted{$0.key < $1.key}.map{"\($0.key): \($0.value)"}.joined(separator:" · ")))</p><table><thead><tr>" + fields.map{"<th>\(esc($0.title))</th>"}.joined() + "<th>Flags</th></tr></thead><tbody>\(rows)</tbody></table></html>"
     }
     public static func pdf(_ report: Report) throws -> Data {
         let output = NSMutableData()
         var box = CGRect(x:0,y:0,width:842,height:595)
-        guard let consumer = CGDataConsumer(data:output), let cg = CGContext(consumer:consumer,mediaBox:&box,nil) else { throw ReportError.invalid("Could not create PDF") }
+        guard let consumer = CGDataConsumer(data:output), let cg = CGContext(consumer:consumer,mediaBox:&box,[kCGPDFContextCreator as String:"Shot Reporter · Squid Productions",kCGPDFContextTitle as String:report.values["title",default:"Shot Reporter report"]] as CFDictionary) else { throw ReportError.invalid("Could not create PDF") }
         let font = CTFontCreateWithName("Helvetica" as CFString,9,nil)
         func draw(_ s: String, _ x: CGFloat, _ y: CGFloat, _ size: CGFloat = 9) {
             let attr = NSAttributedString(string:s,attributes:[NSAttributedString.Key(kCTFontAttributeName as String): CTFontCreateWithName("Helvetica" as CFString,size,nil)])
@@ -37,7 +37,7 @@ public enum Reports {
         let xs:[CGFloat] = [28,83,118,187,252,301,355,423,548]
         let widths:[CGFloat] = [51,31,65,61,45,50,64,121,265]
         func begin() {
-            page += 1; cg.beginPDFPage(nil); draw("CAMERA STATS · Cinematic Arts Camera Report",28,30,16); draw("A Squid Productions Software",28,47,9)
+            page += 1; cg.beginPDFPage(nil); draw("Shot Reporter · Cinematic Arts Camera Report",28,30,16); draw("A Squid Productions Software",28,47,9)
             draw("\(report.values["title",default:"Untitled"]) · \(report.values["date",default:""]) · Day \(report.values["day",default:""]) · Revision \(report.revision) · Page \(page)",28,65,10)
             draw(report.missing.isEmpty ? "READY FOR SUBMISSION · self-reviewed local report" : "DRAFT · \(report.missing.count) outstanding requirements — export is not proof of submission",28,82,9)
             let metadata = Schema.project.filter{!["title","date","day"].contains($0.id)}.map{"\($0.title): \(report.values[$0.id,default:"—"])"}.joined(separator:" · ")

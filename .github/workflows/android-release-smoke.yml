@@ -1,8 +1,5 @@
 name: Signed Android release verification
 on:
-  push:
-    branches: [windows-android-field-alpha]
-    paths: ['.github/workflows/android-release-smoke.yml', 'tools/android_release_smoke.py']
   workflow_dispatch:
     inputs:
       draft_tag:
@@ -31,9 +28,10 @@ jobs:
     env:
       ANDROID_AVD_HOME: ${{ github.workspace }}/.camera-avd
       ANDROID_USER_HOME: ${{ github.workspace }}/.camera-android
-      CAMERA_STATS_RELEASE_APK: android/build/candidate/Camera-Stats-Android-0.1.0-alpha.2.apk
-      EXPECTED_APK_SHA256: ${{ inputs.apk_sha256 || '0fc8efd6ef89194b2d2fd7990ea8b0d5d4ec09ec7dd2f676aec1747e247b3e59' }}
-      EVIDENCE_TAG: ${{ inputs.draft_tag || 'field-clients-validation-0fc8481dd5ad' }}
+      CAMERA_STATS_RELEASE_APK: android/build/candidate/Shot-Reporter-Android-0.1.1-alpha.3.apk
+      CAMERA_STATS_PREVIOUS_APK: android/build/candidate/Camera-Stats-Android-0.1.0-alpha.2.apk
+      EXPECTED_APK_SHA256: ${{ inputs.apk_sha256 }}
+      EVIDENCE_TAG: ${{ inputs.draft_tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -45,8 +43,10 @@ jobs:
           python3 -c 'import os,re; assert re.fullmatch(r"field-clients-validation-[0-9a-f]{12}",os.environ["EVIDENCE_TAG"]); assert re.fullmatch(r"[0-9a-f]{64}",os.environ["EXPECTED_APK_SHA256"])'
           test "$(gh release view "$EVIDENCE_TAG" --json isDraft --jq .isDraft)" = true
           mkdir -p android/build/candidate android/build/qa/signed-release
-          gh release download "$EVIDENCE_TAG" --pattern Camera-Stats-Android-0.1.0-alpha.2.apk --dir android/build/candidate
+          gh release download "$EVIDENCE_TAG" --pattern Shot-Reporter-Android-0.1.1-alpha.3.apk --dir android/build/candidate
           printf '%s  %s\n' "$EXPECTED_APK_SHA256" "$CAMERA_STATS_RELEASE_APK" | sha256sum -c -
+          gh release download v0.1.0-alpha.2 --pattern Camera-Stats-Android-0.1.0-alpha.2.apk --dir android/build/candidate
+          printf '%s  %s\n' '0fc8efd6ef89194b2d2fd7990ea8b0d5d4ec09ec7dd2f676aec1747e247b3e59' "$CAMERA_STATS_PREVIOUS_APK" | sha256sum -c -
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --min-sdk-version 26 --verbose --print-certs "$CAMERA_STATS_RELEASE_APK" > android/build/qa/signed-release/signature.txt
           python3 - <<'PY'
           from pathlib import Path

@@ -1,4 +1,4 @@
-# Camera Stats — Android / Windows field clients
+# Shot Reporter — Android / Windows field clients
 
 Development clients. **No new platform is advertised as available until its recorded build and runtime checks pass.** Existing Apple releases remain separate and unchanged.
 

@@ -1,6 +1,6 @@
 # .camreport schema 1 alpha
 
-`.camreport` is a proposed Camera Stats format, not an industry standard. This implementation uses an unencrypted, uncompressed ZIP with exactly `manifest.json` and `report.json`. The maximum archive size is 32 MiB. Media originals, proxies, caches and OCR models are excluded. No paths are extracted to disk during import.
+`.camreport` is a proposed Shot Reporter format, not an industry standard. This implementation uses an unencrypted, uncompressed ZIP with exactly `manifest.json` and `report.json`. The maximum archive size is 32 MiB. Media originals, proxies, caches and OCR models are excluded. No paths are extracted to disk during import.
 
 Manifest: `format=org.squidproductions.camreport`, `schema=1`, random `packageID`, stable `reportID`, integer `revision`, originating `device`, `scope=full-report`, and lowercase hexadecimal `sha256` over the report.json bytes. ZIP local headers, central directory, bounds, entry names, duplicates, compression, CRCs and end record are validated. Compressed/encrypted/multi-disk archives and additional entries are unsupported and rejected.
 

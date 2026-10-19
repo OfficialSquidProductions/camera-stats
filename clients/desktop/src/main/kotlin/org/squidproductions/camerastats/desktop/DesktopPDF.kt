@@ -18,7 +18,7 @@ object DesktopPDF {
         val width=842f;val height=595f;var y=0f;var page=0;var graphics:PdfBoxGraphics2D?=null
         fun endPage() {graphics?.let {g ->g.dispose();val p=PDPage(PDRectangle(width,height));document.addPage(p);PDPageContentStream(document,p).use {it.drawForm(g.xFormObject)}};graphics=null}
         fun beginPage() {
-            endPage();page++;val g=PdfBoxGraphics2D(document,width,height);graphics=g;g.color=Color(36,29,33);g.font=Font("Dialog",Font.BOLD,14);g.drawString("CAMERA STATS · Camera Report",28f,30f);g.font=Font("Dialog",Font.PLAIN,9);g.drawString("A Squid Productions Software · Revision ${report.revision} · Page $page",28f,46f);y=68f
+            endPage();page++;val g=PdfBoxGraphics2D(document,width,height);graphics=g;g.color=Color(36,29,33);g.font=Font("Dialog",Font.BOLD,14);g.drawString("Shot Reporter · Camera Report",28f,30f);g.font=Font("Dialog",Font.PLAIN,9);g.drawString("A Squid Productions Software · Revision ${report.revision} · Page $page",28f,46f);y=68f
         }
         beginPage()
         Reports.printable(report).forEach {paragraph ->
@@ -31,7 +31,7 @@ object DesktopPDF {
                 y+=layout.ascent;layout.draw(graphics,28f,y);y+=layout.descent+layout.leading+4f
             }
         }
-        endPage();document.documentInformation=PDDocumentInformation().apply {title=report.values["title"] ?: "Camera Stats report";creator="Camera Stats · Squid Productions"}
+        endPage();document.documentInformation=PDDocumentInformation().apply {title=report.values["title"] ?: "Shot Reporter report";creator="Shot Reporter · Squid Productions"}
         ByteArrayOutputStream().use {document.save(it);it.toByteArray()}
     }
 }

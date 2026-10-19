@@ -69,7 +69,7 @@ class AppState(private val repository:Repository?,val platform:PlatformGateway) 
     fun export(kind:String)=attempt {
         val snapshot=report
         val (type,bytes)=when(kind) {"pdf" -> "application/pdf" to platform.pdf(snapshot);"csv" -> "text/csv" to Reports.csv(snapshot).toByteArray(Charsets.UTF_8);"html" -> "text/html" to Reports.html(snapshot).toByteArray(Charsets.UTF_8);else -> "application/octet-stream" to Exchange.export(snapshot,platform.label)}
-        platform.exportFile("Camera-Report-r${snapshot.revision}.$kind",type,bytes) {lastExport="Saved $kind snapshot · r${snapshot.revision}"}
+        platform.exportFile("Shot-Reporter-r${snapshot.revision}.$kind",type,bytes) {lastExport="Saved $kind snapshot · r${snapshot.revision}"}
     }
 }
 
@@ -87,7 +87,7 @@ private val Green=Color(0xff237b20)
             Column(Modifier.fillMaxSize().safeDrawingPadding()) {
                 Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
                     Image(host.brand,null,Modifier.size(38.dp,48.dp));Spacer(Modifier.width(12.dp))
-                    Column {Text("CAMERA STATS",fontSize=23.sp,fontWeight=FontWeight.Black);Text("A Squid Productions Software",style=MaterialTheme.typography.labelMedium)}
+                    Column {Text("Shot Reporter",fontSize=23.sp,fontWeight=FontWeight.Black);Text("A Squid Productions Software",style=MaterialTheme.typography.labelMedium)}
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalAlignment=Alignment.CenterVertically) {Text(state.report.values["title"] ?: "New production",Modifier.weight(1f),fontWeight=FontWeight.Bold,maxLines=1);Text("r${state.report.revision}",style=MaterialTheme.typography.labelMedium)}
                 Row(Modifier.fillMaxWidth().padding(8.dp),horizontalArrangement=Arrangement.SpaceEvenly) {
@@ -162,7 +162,7 @@ private val Green=Color(0xff237b20)
             }},confirmButton={TextButton(onClick={state.pending=null}) {Text("Cancel")}})
         }
         notices?.let {text ->AlertDialog(onDismissRequest={notices=null},title={Text("Open-source notices")},text={LazyColumn(Modifier.heightIn(max=550.dp)) {items(text.split("\n\n")) {paragraph ->Text(paragraph+"\n",style=MaterialTheme.typography.bodySmall)}}},confirmButton={TextButton(onClick={notices=null}) {Text("Done")}})}
-        state.error?.let {message ->AlertDialog(onDismissRequest={state.error=null},title={Text("Camera Stats")},text={Text(message)},confirmButton={TextButton(onClick={state.error=null}) {Text("OK")}}) }
+        state.error?.let {message ->AlertDialog(onDismissRequest={state.error=null},title={Text("Shot Reporter")},text={Text(message)},confirmButton={TextButton(onClick={state.error=null}) {Text("OK")}}) }
     }
 }
 

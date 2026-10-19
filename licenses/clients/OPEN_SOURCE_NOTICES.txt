@@ -1,4 +1,4 @@
-CAMERA STATS — OPEN-SOURCE NOTICES
+Shot Reporter — OPEN-SOURCE NOTICES
 
 Application source: MIT, Copyright (c) 2026 Squid Productions.
 Names and marks remain their owners’ trademarks.

@@ -1,6 +1,6 @@
 # Release checklist
 
-Camera Stats source is MIT licensed. Keep dependency notices and brand trademark rights separate from the code license.
+Shot Reporter source is MIT licensed. Keep dependency notices and brand trademark rights separate from the code license.
 
 1. Run all core, persistence, import/export and PDF tests; build supported targets from the exact release commit. Keep the full-plan acceptance ledger honest about unsupported platforms and media features.
 2. Audit the staged source for credentials, private production reports, personal metadata, proprietary SDKs/models/fonts and build artifacts. Keep internal account/coordination notes outside the public tree.

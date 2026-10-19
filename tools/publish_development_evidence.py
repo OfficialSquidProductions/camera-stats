@@ -19,7 +19,7 @@ def gh(*args,check=True):
 def safe_error(result):return result.stderr.replace(os.environ.get('GH_TOKEN','not-a-token'),'[redacted]')[-1800:]
 existing=gh('release','view',tag,check=False)
 if existing.returncode:
-    result=gh('release','create',tag,'--draft','--target',sha,'--title','Camera Stats development validation '+sha[:12],'--notes','Development build evidence only. Not a public platform release. Review tests and runtime validation before publication.',check=False)
+    result=gh('release','create',tag,'--draft','--target',sha,'--title','Shot Reporter development validation '+sha[:12],'--notes','Development build evidence only. Not a public platform release. Review tests and runtime validation before publication.',check=False)
     if result.returncode and gh('release','view',tag,check=False).returncode:raise RuntimeError('Could not create owner-visible draft validation release: '+safe_error(result))
 with tempfile.TemporaryDirectory(prefix='camera-ci-evidence-') as temp:
     output=Path(temp);assets=[]
