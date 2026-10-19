@@ -1,5 +1,8 @@
 name: Signed Android release verification
 on:
+  push:
+    branches: [windows-android-field-alpha]
+    paths: ['.github/workflows/android-release-smoke.yml']
   workflow_dispatch:
     inputs:
       draft_tag:
@@ -29,8 +32,8 @@ jobs:
       ANDROID_AVD_HOME: ${{ github.workspace }}/.camera-avd
       ANDROID_USER_HOME: ${{ github.workspace }}/.camera-android
       CAMERA_STATS_RELEASE_APK: android/build/candidate/Camera-Stats-Android-0.1.0-alpha.2.apk
-      EXPECTED_APK_SHA256: ${{ inputs.apk_sha256 }}
-      EVIDENCE_TAG: ${{ inputs.draft_tag }}
+      EXPECTED_APK_SHA256: ${{ inputs.apk_sha256 || '0fc8efd6ef89194b2d2fd7990ea8b0d5d4ec09ec7dd2f676aec1747e247b3e59' }}
+      EVIDENCE_TAG: ${{ inputs.draft_tag || 'field-clients-validation-0fc8481dd5ad' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
