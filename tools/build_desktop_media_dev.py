@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Local Mac development app only. No signing account, release, website or upload operation."""
+from pathlib import Path
+import argparse,subprocess,os,shutil,json,hashlib
+p=argparse.ArgumentParser();p.add_argument('--java-home',required=True);p.add_argument('--ffmpeg-bin',required=True);p.add_argument('--ffmpeg-source',required=True);p.add_argument('--gradle');p.add_argument('--output',required=True);p.add_argument('--worker-only',action='store_true');a=p.parse_args()
+root=Path(__file__).resolve().parents[1];java=Path(a.java_home).resolve();codecs=Path(a.ffmpeg_bin).resolve();source=Path(a.ffmpeg_source).resolve();output=Path(a.output).resolve()
+if output.exists():raise SystemExit('Output exists. Choose a fresh development output; no installed app is replaced.')
+version=subprocess.check_output([str(codecs/'ffmpeg'),'-version'],text=True)
+if '--enable-gpl' in version or '--enable-nonfree' in version or '--disable-network' not in version:raise SystemExit('This development bundle requires the reviewed network-disabled LGPL FFmpeg configuration.')
+env=dict(os.environ);env['JAVA_HOME']=str(java)
+subprocess.run([a.gradle or str(root/'clients/gradlew'),'-p',str(root/'clients'),'-PskipAndroid=true',':media-worker:installDist','--no-daemon','--console=plain'],check=True,env=env)
+if a.worker_only:worker=output
+else:
+ derived=output.parent/'xcode-derived'
+ subprocess.run(['xcodebuild','-project',str(root/'apple/CameraStats.xcodeproj'),'-scheme','CameraStats','-configuration','Debug','-destination','platform=macOS','-derivedDataPath',str(derived),'CODE_SIGNING_ALLOWED=NO','build'],check=True,env=env)
+ app=derived/'Build/Products/Debug/Shot Reporter.app';output.parent.mkdir(parents=True,exist_ok=True);shutil.copytree(app,output);worker=output/'Contents/Resources/DesktopMedia'
+worker.mkdir(parents=True,exist_ok=True);shutil.copytree(root/'clients/media-worker/build/install/media-worker/lib',worker/'lib')
+subprocess.run([str(java/'bin/jlink'),'--add-modules','java.base,java.sql,java.logging,java.naming,jdk.unsupported','--strip-debug','--no-header-files','--no-man-pages','--compress=2','--output',str(worker/'runtime')],check=True)
+(worker/'bin').mkdir();(worker/'legal').mkdir()
+for name in ['ffmpeg','ffprobe']:shutil.copy2(codecs/name,worker/'bin'/name)
+shutil.copyfile(source/'COPYING.LGPLv2.1',worker/'legal/FFmpeg-LGPL-2.1.txt')
+shutil.copyfile(root/'licenses/clients/OPEN_SOURCE_NOTICES.txt',worker/'legal/OPEN_SOURCE_NOTICES.txt')
+metadata={'development_only':True,'ffmpeg':version,'ffmpeg_source':'https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz','ffmpeg_source_sha256':'8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e','runtime':subprocess.check_output([str(java/'bin/java'),'-version'],stderr=subprocess.STDOUT,text=True),'scope':'Standalone MOV/MP4 development profile; no RAW/OCR/NLE certification; no production release packaging.'}
+(worker/'DEVELOPMENT.json').write_text(json.dumps(metadata,indent=2)+'\n');print('Local development worker:',worker)

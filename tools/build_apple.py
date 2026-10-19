@@ -27,17 +27,17 @@ info = {'CFBundleDisplayName':'Shot Reporter','CFBundleName':'Shot Reporter','CF
 def ident(n): return f'{n:024X}'
 objects=[]
 def obj(n,s): objects.append(f'{ident(n)} = {{ {s} }};')
-for i,name in enumerate(['CameraStatsApp.swift','Store.swift'],10):
+for i,name in enumerate(['CameraStatsApp.swift','Store.swift','DesktopMediaTypes.swift','DesktopMediaModel.swift','DesktopMediaView.swift'],10):
     obj(i,f'isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../app/Sources/CameraStats/{name}"; sourceTree = "<group>";')
     obj(i+10,f'isa = PBXBuildFile; fileRef = {ident(i)};')
 obj(30,'isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>";')
 obj(31,f'isa = PBXBuildFile; fileRef = {ident(30)};')
 obj(32,'isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>";')
 obj(33,f'isa = PBXBuildFile; fileRef = {ident(32)};')
-obj(40,f'isa = PBXGroup; children = ({ident(10)},{ident(11)},{ident(30)},{ident(32)},{ident(41)}); sourceTree = "<group>";')
+obj(40,f'isa = PBXGroup; children = ({ident(10)},{ident(11)},{ident(12)},{ident(13)},{ident(14)},{ident(30)},{ident(32)},{ident(41)}); sourceTree = "<group>";')
 obj(41,f'isa = PBXGroup; children = ({ident(42)}); name = Products; sourceTree = "<group>";')
 obj(42,'isa = PBXFileReference; explicitFileType = wrapper.application; path = "Shot Reporter.app"; sourceTree = BUILT_PRODUCTS_DIR;')
-obj(50,f'isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({ident(20)},{ident(21)}); runOnlyForDeploymentPostprocessing = 0;')
+obj(50,f'isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = ({ident(20)},{ident(21)},{ident(22)},{ident(23)},{ident(24)}); runOnlyForDeploymentPostprocessing = 0;')
 obj(51,f'isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ({ident(82)}); runOnlyForDeploymentPostprocessing = 0;')
 obj(52,f'isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ({ident(31)},{ident(33)}); runOnlyForDeploymentPostprocessing = 0;')
 obj(60,f'isa = PBXNativeTarget; buildConfigurationList = {ident(71)}; buildPhases = ({ident(50)},{ident(51)},{ident(52)}); buildRules = (); dependencies = (); name = CameraStats; packageProductDependencies = ({ident(81)}); productName = CameraStats; productReference = {ident(42)}; productType = "com.apple.product-type.application";')

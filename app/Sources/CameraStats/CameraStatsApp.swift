@@ -26,8 +26,21 @@ struct Brand: View {
 }
 enum Destination: String, CaseIterable, Identifiable {
     case today = "Today", log = "Log", review = "Review", saves = "Saves"
+    #if os(macOS)
+    case footage = "Footage"
+    #endif
     var id:String { rawValue }
-    var icon:String { switch self { case .today:return "sun.max"; case .log:return "list.bullet.rectangle"; case .review:return "checklist"; case .saves:return "externaldrive" } }
+    var icon:String {
+        switch self {
+        case .today:return "sun.max"
+        case .log:return "list.bullet.rectangle"
+        case .review:return "checklist"
+        case .saves:return "externaldrive"
+        #if os(macOS)
+        case .footage:return "film.stack"
+        #endif
+        }
+    }
 }
 struct Workspace: View {
     @Bindable var store: Store
@@ -85,7 +98,15 @@ struct Workspace: View {
             #endif
             HStack { Text(store.report.values["title",default:"New production"]).font(.headline).lineLimit(1); Spacer(); Text("r\(store.report.revision)").monospacedDigit().foregroundStyle(.secondary) }.padding(.horizontal).padding(.vertical,8)
             Divider()
-            switch d { case .today: today; case .log: log; case .review: review; case .saves: saves }
+            switch d {
+            case .today: today
+            case .log: log
+            case .review: review
+            case .saves: saves
+            #if os(macOS)
+            case .footage: DesktopMediaWorkspace(store:store).id(store.report.id)
+            #endif
+            }
         }.navigationTitle(d.rawValue).background(Color("Canvas"))
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
