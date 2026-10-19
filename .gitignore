@@ -31,3 +31,6 @@ clients/local.properties
 /.camera-gradle-ci/
 /.camera-avd/
 /.camera-android/
+
+# Website build output is regenerated from its retained Worker source.
+website/dist/

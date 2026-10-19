@@ -2,17 +2,19 @@
 
 **A Squid Productions Software**
 
+Previously Camera Stats. Existing reports, app identities, and signing keys are preserved; see the [rebrand compatibility notes](docs/REBRAND.md).
+
 Early, local camera-reporting apps for iPhone, iPad, Mac, Android phones/tablets, and Windows. The complete product follows the 29-page Camera Reporting Product Plan, Revision 6 (October 19, 2026). This repository begins the field alpha; it is **not the plan's complete first release**.
 
 ## Try the owner-test alpha
 
-Download the signed, notarized universal Mac alpha from the [GitHub release](https://github.com/OfficialSquidProductions/shot-reporter/releases/tag/v0.1.0-alpha.1). The download/status page is [camerastats.squidproductions.org](https://camerastats.squidproductions.org). Shot Reporter 0.1.0 (1) is available to the invited account owner in TestFlight on iPhone, iPad, and Mac. See [validation evidence](docs/VALIDATION.md).
+Download the signed, notarized universal Mac alpha from the [GitHub release](https://github.com/OfficialSquidProductions/shot-reporter/releases/tag/v0.1.1-alpha.3). The download/status page is [shotreporter.squidproductions.org](https://shotreporter.squidproductions.org). Shot Reporter 0.1.1 (2) is available to the invited account owner in TestFlight on iPhone, iPad, and Mac. See [validation evidence](docs/VALIDATION.md).
 
-Verified [Windows x64 installers and signed Android APK](https://github.com/OfficialSquidProductions/shot-reporter/releases/tag/v0.1.0-alpha.2) are also available. Windows installers are unsigned; Android testing covered phone/tablet emulators.
+Verified [Windows x64 installers and signed Android APK](https://github.com/OfficialSquidProductions/shot-reporter/releases/tag/v0.1.1-alpha.3) are also available. Windows installers are unsigned; Android testing covered phone/tablet emulators.
 
 To build from source, open `apple/CameraStats.xcodeproj`, choose `CameraStats`, and build for macOS 14+, iPhone, or iPad on iOS/iPadOS 17+. No package downloads or runtime network access are required. Configure your own signing team for device distribution.
 
-The additive Android/Windows clients use a shared Kotlin/JVM report engine and Compose screens, native SQLite adapters, system file pickers and platform PDF renderers. Their [build instructions](clients/README.md) require JDK 21 and the pinned Gradle wrapper; Android builds also require an SDK whose terms the owner has accepted. Windows installers bundle their JVM. The Apple interface and engine remain unchanged. See the [architecture and interoperability gates](docs/CLIENT_ARCHITECTURE.md).
+The additive Android/Windows clients use a shared Kotlin/JVM report engine and Compose screens, native SQLite adapters, system file pickers and platform PDF renderers. Their [build instructions](clients/README.md) require JDK 21 and the pinned Gradle wrapper; Android builds also require an SDK whose terms the owner has accepted. Windows installers bundle their JVM. The Apple and Kotlin clients retain the same compatible report model. See the [architecture and interoperability gates](docs/CLIENT_ARCHITECTURE.md).
 
 Tap **Open The Last Light demo** on Today. It opens a separate fictional report with three completed takes for shot 3A and the shared 16-shot plan across eight scenes from Production Desk's sample script, including Maya, Eli, Jonah, and the lighthouse. Read the full script from Today, inspect the shared circled take 2, preview a landscape PDF, or save/import a `.camreport`. Creating another demo never overwrites an existing report. The demo follows the shared The Last Light test story; this task does not modify the other applications.
 
