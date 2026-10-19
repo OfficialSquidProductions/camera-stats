@@ -8,7 +8,7 @@ Validated on 2026-10-19 with Xcode 26.6 / Swift 6.3.3.
 - iPad mini / iPadOS 26.5 Simulator: inspected portrait layout, the shared circled take 2 and editable report fields; added take 4 with inherited settings; terminated and relaunched the app; verified take 4 remained.
 - Canonical demo script SHA-256: `84b4bea90b72a1d3d09be8925b07cdf696e9bc579386ed21c3255bb305336f87`. Eight scenes and 16 planned shots match Scenic and Production Desk; completed sample takes are 3A/1–3, circle 2. Existing reports are never reset by the demo button.
 - Suite icon comparison verified the rounded white Mac tile and green mark geometry against Scenic and Production Desk. The original supplied brand asset remains unchanged.
-- Signed iPhone/iPad and universal arm64/x86_64 Mac archives uploaded to App Store Connect for internal testing. This is not a public App Store submission.
+- Signed iPhone/iPad and universal arm64/x86_64 Mac archives uploaded to App Store Connect. Both 0.1.0 (1) builds processed successfully and are marked Testing in the manual Owner Testing internal group, with one owner tester. This is not a public App Store submission.
 - Direct Mac artifact: Developer ID signature, hardened runtime, notarization, stapled ticket and Gatekeeper assessment verified.
 
 ## Remaining validation

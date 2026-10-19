@@ -6,7 +6,7 @@ An early, local-only camera-reporting app for iPhone, iPad, and Mac. The complet
 
 ## Try the owner-test alpha
 
-Download the signed, notarized universal Mac alpha from the [GitHub release](https://github.com/OfficialSquidProductions/camera-stats/releases/tag/v0.1.0-alpha.1). The download/status page is [camerastats.squidproductions.org](https://camerastats.squidproductions.org). iPhone/iPad and Mac owner TestFlight builds have been uploaded; availability depends on Apple processing and internal group assignment. See [validation evidence](docs/VALIDATION.md).
+Download the signed, notarized universal Mac alpha from the [GitHub release](https://github.com/OfficialSquidProductions/camera-stats/releases/tag/v0.1.0-alpha.1). The download/status page is [camerastats.squidproductions.org](https://camerastats.squidproductions.org). Camera Stats SP 0.1.0 (1) is available to the invited account owner in TestFlight on iPhone, iPad, and Mac. See [validation evidence](docs/VALIDATION.md).
 
 To build from source, open `apple/CameraStats.xcodeproj`, choose `CameraStats`, and build for macOS 14+, iPhone, or iPad on iOS/iPadOS 17+. No package downloads or runtime network access are required. Configure your own signing team for device distribution.
 
