@@ -8,6 +8,8 @@ Early, local camera-reporting apps for iPhone, iPad, Mac, Android phones/tablets
 
 Download the signed, notarized universal Mac alpha from the [GitHub release](https://github.com/OfficialSquidProductions/camera-stats/releases/tag/v0.1.0-alpha.1). The download/status page is [camerastats.squidproductions.org](https://camerastats.squidproductions.org). Camera Stats SP 0.1.0 (1) is available to the invited account owner in TestFlight on iPhone, iPad, and Mac. See [validation evidence](docs/VALIDATION.md).
 
+Verified [Windows x64 installers and signed Android APK](https://github.com/OfficialSquidProductions/camera-stats/releases/tag/v0.1.0-alpha.2) are also available. Windows installers are unsigned; Android testing covered phone/tablet emulators.
+
 To build from source, open `apple/CameraStats.xcodeproj`, choose `CameraStats`, and build for macOS 14+, iPhone, or iPad on iOS/iPadOS 17+. No package downloads or runtime network access are required. Configure your own signing team for device distribution.
 
 The additive Android/Windows clients use a shared Kotlin/JVM report engine and Compose screens, native SQLite adapters, system file pickers and platform PDF renderers. Their [build instructions](clients/README.md) require JDK 21 and the pinned Gradle wrapper; Android builds also require an SDK whose terms the owner has accepted. Windows installers bundle their JVM. The Apple interface and engine remain unchanged. See the [architecture and interoperability gates](docs/CLIENT_ARCHITECTURE.md).
