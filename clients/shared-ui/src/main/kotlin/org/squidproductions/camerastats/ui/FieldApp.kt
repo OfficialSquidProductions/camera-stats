@@ -44,24 +44,25 @@ class AppState(private val repository:Repository?,val platform:PlatformGateway) 
     }
     private fun adopt(loaded:Loaded) {slot=loaded.slot;report=loaded.report;fingerprint=loaded.fingerprint;status="Saved on this device";blocked=false;selected=report.active.firstOrNull { "Circle" in it.flags }?.id ?: report.active.lastOrNull()?.id}
     private fun refresh() {documents=repository?.list().orEmpty()}
+    private fun rememberDocument() {documents=(documents.filterNot {it.slot==slot}+Document(slot,report.values["title"] ?: "Untitled",report.revision)).sortedWith(compareBy({it.title},{it.slot}))}
     fun fail(e:Exception) {error=e.message ?: "This operation could not be completed; existing report preserved."}
     fun attempt(action:()->Unit) {try {action()} catch(e:Exception) {fail(e)}}
     fun change(summary:String,action:(Report)->Report) {
         if(blocked) {error="Local recovery is required before changes can be saved.";return}
-        attempt {
+        try {
             val proposed=action(report);val next=if(proposed.revision==report.revision) proposed.record(summary,platform.label) else proposed
             val hash=repository!!.save(slot,next,platform.label,fingerprint)
-            report=next;fingerprint=hash;status="Saved on this device";refresh()
-        }
+            report=next;fingerprint=hash;status="Saved on this device";rememberDocument()
+        } catch(e:Exception) {error="Save failed; this change was not accepted. ${e.message.orEmpty()}"}
     }
     fun open(incoming:Report) = attempt {
         val newSlot=identity();val hash=repository!!.save(newSlot,incoming,platform.label,null)
-        adopt(Loaded(newSlot,incoming,hash));refresh()
+        adopt(Loaded(newSlot,incoming,hash));rememberDocument()
     }
     fun demo()=attempt {open(platform.demo().separateDemo())}
     fun select(id:String)=attempt {adopt(repository!!.select(id))}
     fun previous()=attempt {open(repository!!.load(slot,true).report)}
-    fun next(scene:String) {change("Added take") {it.next(scene.trim(),platform.label)};selected=report.active.lastOrNull()?.id}
+    fun next(scene:String) {change("Added take") {it.next(scene,platform.label)};selected=report.active.lastOrNull()?.id}
     fun entry(id:String,summary:String,action:(Entry)->Entry)=change(summary) {r -> r.copy(entries=r.entries.map {if(it.id==id) action(it) else it})}
     fun importReport()=attempt {platform.importFile {bytes -> if(bytes!=null) attempt {pending=Exchange.read(bytes)}}}
     fun export(kind:String)=attempt {

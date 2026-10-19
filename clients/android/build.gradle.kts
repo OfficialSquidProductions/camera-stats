@@ -14,7 +14,7 @@ kotlin {jvmToolchain(21);compilerOptions {jvmTarget.set(org.jetbrains.kotlin.gra
 dependencies {
     implementation(project(":core"));implementation("androidx.activity:activity-compose:1.10.1")
     implementation(compose.material3);implementation(compose.ui);implementation(compose.foundation)
-    androidTestImplementation("androidx.test.ext:junit:1.2.1");androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.espresso:espresso-intents:3.6.1");androidTestImplementation("androidx.test.ext:junit:1.2.1");androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.8.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.8.2")
 }

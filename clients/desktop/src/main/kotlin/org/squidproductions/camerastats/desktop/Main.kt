@@ -17,13 +17,19 @@ import java.util.Properties
 import javax.swing.*
 import javax.swing.filechooser.FileNameExtensionFilter
 
-fun main() = application {
+fun main(args:Array<String>) {
+    if(args.firstOrNull()=="--self-test") {
+        require(args.size==2) { "--self-test requires an isolated output directory" }
+        packagedSelfTest(Path.of(args[1]));return
+    }
+    application {
     val root=remember {Path.of(System.getenv("LOCALAPPDATA") ?: Path.of(System.getProperty("user.home"),".local","share").toString(),"Squid Productions","Camera Stats")}
     val gateway=remember {DesktopGateway(root)}
     val repositoryResult=remember {runCatching {Repository(JdbcDriver(root.resolve("reports.sqlite3")))}}
     val state=remember {AppState(repositoryResult.getOrNull(),gateway).also {model ->repositoryResult.exceptionOrNull()?.let {model.error="Local reports could not be opened. Existing bytes were preserved. ${it.message}"};gateway.failure={model.fail(it)}}}
     DisposableEffect(Unit) {onDispose {repositoryResult.getOrNull()?.close()}}
     Window(onCloseRequest=::exitApplication,title="Camera Stats",icon=BitmapPainter(gateway.icon),state=rememberWindowState(width=1100.dp,height=840.dp)) {FieldApp(state)}
+}
 }
 class DesktopGateway(private val root:Path):PlatformGateway {
     override val label="Windows / desktop"
@@ -46,7 +52,7 @@ class DesktopGateway(private val root:Path):PlatformGateway {
         try {
             val chooser=JFileChooser().apply {dialogTitle="Save Camera Stats report";selectedFile=java.io.File(name)}
             if(chooser.showSaveDialog(null)!=JFileChooser.APPROVE_OPTION) return@invokeLater
-            val path=chooser.selectedFile.toPath().toAbsolutePath()
+            val path=exportDestination(chooser.selectedFile.toPath().toAbsolutePath(),name.substringAfterLast('.'))
             if(Files.exists(path) && JOptionPane.showConfirmDialog(null,"Replace ${path.fileName}?","Replace existing file",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) return@invokeLater
             durableExport(path,bytes);complete()
         } catch(e:Exception) {failure(e)}
@@ -59,4 +65,23 @@ fun durableExport(path:Path,bytes:ByteArray) {
         FileChannel.open(temp,StandardOpenOption.WRITE).use {channel ->val buffer=ByteBuffer.wrap(bytes);while(buffer.hasRemaining()) channel.write(buffer);channel.force(true)}
         try {Files.move(temp,path,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING)} catch(_:AtomicMoveNotSupportedException) {Files.move(temp,path,StandardCopyOption.REPLACE_EXISTING)}
     } finally {Files.deleteIfExists(temp)}
+}
+
+/** Report export never replaces a differently typed file such as a camera original. */
+fun exportDestination(selected:Path,extension:String):Path {
+    require(extension in setOf("camreport","pdf","csv","html"))
+    return if(selected.fileName.toString().endsWith(".$extension",ignoreCase=true)) selected else selected.resolveSibling(selected.fileName.toString()+".$extension")
+}
+
+/** Exercises the bundled runtime in CI, with only synthetic data under the supplied QA directory. */
+fun packagedSelfTest(root:Path) {
+    Files.createDirectories(root);val gateway=DesktopGateway(root);val demo=gateway.demo().separateDemo();val slot=identity()
+    Repository(JdbcDriver(root.resolve("qa.sqlite3"))).use {repo ->val hash=repo.save(slot,demo,"Packaged runtime test",null);repo.save(slot,demo.next("3A","Packaged runtime test"),"Packaged runtime test",hash)}
+    val restored=Repository(JdbcDriver(root.resolve("qa.sqlite3"))).use {it.load(slot).report}
+    check(restored.active.size==4 && restored.active.last().values["take"]=="4")
+    durableExport(root.resolve("package-test.camreport"),Exchange.export(restored,"Packaged runtime test"))
+    check(Exchange.read(Files.readAllBytes(root.resolve("package-test.camreport"))).report==restored)
+    val pdf=gateway.pdf(restored);check(pdf.take(5).toByteArray().toString(Charsets.US_ASCII)=="%PDF-");Files.write(root.resolve("package-test.pdf"),pdf)
+    check(gateway.brand.width>0 && gateway.icon.width==256)
+    Files.writeString(root.resolve("PASS.txt"),"PASS: bundled JVM, native SQLite durable reopen, camreport roundtrip, PDF rendering and suite image resources.\n")
 }

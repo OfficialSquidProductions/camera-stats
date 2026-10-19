@@ -33,6 +33,15 @@ jobs:
         run: ./gradlew.bat -PskipAndroid=true :core:test :jdbc:test :desktop:test --no-daemon --console=plain
       - name: Package bundled-runtime Windows clients
         run: ./gradlew.bat -PskipAndroid=true :desktop:packageExe :desktop:packageMsi --no-daemon --console=plain
+      - name: Verify the packaged Windows runtime
+        run: |
+          $launchers = @(Get-ChildItem -Path desktop/build/compose/binaries/main/app -Recurse -Filter 'Camera Stats.exe')
+          if ($launchers.Count -ne 1) { throw "Expected one packaged Camera Stats launcher" }
+          $qa = Join-Path (Get-Location) 'desktop/build/qa/packaged-runtime'
+          New-Item -ItemType Directory -Force -Path $qa | Out-Null
+          $process = Start-Process -FilePath $launchers[0].FullName -ArgumentList '--self-test', ('"' + $qa + '"') -Wait -PassThru
+          if ($process.ExitCode -ne 0 -or !(Test-Path (Join-Path $qa 'PASS.txt'))) { throw "Packaged-runtime check failed" }
+          Get-Content (Join-Path $qa 'PASS.txt')
       - name: Preserve development packages and QA in an owner-visible draft
         if: always()
         env:
@@ -68,11 +77,13 @@ jobs:
       - name: Prepare AOSP emulator without accepting new licenses
         run: |
           set -euo pipefail
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'emulator' 'system-images;android-35;default;x86_64' </dev/null
+          if ! test -x "$ANDROID_HOME/emulator/emulator"; then timeout 12m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'emulator' </dev/null; fi
+          if ! test -d "$ANDROID_HOME/system-images/android-35/default/x86_64"; then timeout 12m "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'system-images;android-35;default;x86_64' </dev/null; fi
           printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name camera-qa --package 'system-images;android-35;default;x86_64' --device '${{ matrix.device }}'
           if test -e /dev/kvm; then sudo setfacl -m u:$(id -u):rw /dev/kvm; fi
-          "$ANDROID_HOME/emulator/emulator" -avd camera-qa -port 5554 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -memory 2048 -cores 2 >"$RUNNER_TEMP/emulator.log" 2>&1 &
-          "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 wait-for-device
+          trap 'cat "$RUNNER_TEMP/emulator.log" 2>/dev/null || true' EXIT
+          "$ANDROID_HOME/emulator/emulator" -avd camera-qa -port 5554 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 -cores 2 >"$RUNNER_TEMP/emulator.log" 2>&1 &
+          timeout 90s "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 wait-for-device
           for i in $(seq 1 120); do
             if test "$("$ANDROID_HOME/platform-tools/adb" -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = '1'; then exit 0; fi
             sleep 5
@@ -85,6 +96,8 @@ jobs:
         if: always()
         run: |
           mkdir -p android/build/qa
+          cp "$RUNNER_TEMP/emulator.log" android/build/qa/emulator.log || true
+          "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 pull /sdcard/Android/data/org.squidproductions.camerastats/files/qa/. android/build/qa/ || true
           "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 exec-out screencap -p > android/build/qa/emulator.png || true
       - name: Preserve development APK and test evidence in an owner-visible draft
         if: always()

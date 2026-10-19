@@ -15,6 +15,11 @@ class CoreTests {
         val folder=File("build/conformance").apply { mkdirs() };File(folder,"kotlin-roundtrip.camreport").writeBytes(bytes)
         val changed=original.next("8B","JVM conformance fixture");File(folder,"kotlin-edited.camreport").writeBytes(Exchange.export(changed,"JVM conformance fixture"))
     }
+    @Test fun longTakeLabelsMatchSwiftIntegerRangeWithoutOverflow() {
+        val report=Exchange.read(fixture()).report;val entry=report.entries.first().copy(values=report.entries.first().values+("take" to "9223372036854775806"));val base=report.copy(entries=listOf(entry))
+        val next=base.next("3A","Test");assertEquals("9223372036854775807",next.entries.last().values["take"]);assertFails {next.next("3A","Test")}
+        assertFails {base.copy(revision=Long.MAX_VALUE).record("Test","Test")}
+    }
     @Test fun completeOwnerDemoRemainsCanonicalAndIndependent() {
         val base=Exchange.decode(File(System.getProperty("fixtures"),"owner-demo.json").readBytes());val a=base.separateDemo();val b=base.separateDemo()
         assertNotEquals(a.id,b.id);assertEquals(3,a.active.size);assertEquals(listOf("2"),a.active.filter { "Circle" in it.flags }.map { it.values["take"] })

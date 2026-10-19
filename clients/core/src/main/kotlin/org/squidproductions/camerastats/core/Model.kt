@@ -22,11 +22,16 @@ class ReportException(message: String) : IllegalArgumentException(message)
     val importedPackages: List<String> = emptyList(), val namingTemplate: String = "{project}_SC{scene}_TK{take}_CAM-{camera}"
 ) {
     val active: List<Entry> get() = entries.filterNot { it.deleted }
-    fun record(summary: String, device: String): Report = copy(revision = revision + 1, history = history + Change(device=device, summary=summary))
+    fun record(summary: String, device: String): Report {
+        require(revision<Long.MAX_VALUE) { "Report revision exceeds the supported range; original preserved." }
+        return copy(revision = revision + 1, history = history + Change(device=device, summary=summary))
+    }
     fun next(scene: String, device: String): Report {
         require(scene.isNotBlank()) { "Enter a scene / setup first." }
         val camera = defaults["camera"].orEmpty()
-        val next = (active.filter { it.values["scene"] == scene && it.values["camera"].orEmpty() == camera }.mapNotNull { it.values["take"]?.toIntOrNull() }.maxOrNull() ?: 0) + 1
+        val maximum = (active.filter { it.values["scene"] == scene && it.values["camera"].orEmpty() == camera }.mapNotNull { it.values["take"]?.toLongOrNull() }.maxOrNull() ?: 0L)
+        require(maximum<Long.MAX_VALUE) { "Take number exceeds the supported range. Enter a manual take label instead." }
+        val next=maximum+1
         return copy(entries = entries + Entry(values = defaults + mapOf("scene" to scene, "take" to next.toString()))).record("Added scene $scene, take $next, camera $camera",device)
     }
     val missing: List<String> get() = buildList {
