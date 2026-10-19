@@ -2,13 +2,15 @@
 
 **A Squid Productions Software**
 
-An early, local-only camera-reporting app for iPhone, iPad, and Mac. The complete product follows the 29-page Camera Reporting Product Plan, Revision 6 (October 19, 2026). This repository begins the field alpha; it is **not the plan's complete first release**.
+Early, local camera-reporting apps for iPhone, iPad, Mac, Android phones/tablets, and Windows. The complete product follows the 29-page Camera Reporting Product Plan, Revision 6 (October 19, 2026). This repository begins the field alpha; it is **not the plan's complete first release**.
 
 ## Try the owner-test alpha
 
 Download the signed, notarized universal Mac alpha from the [GitHub release](https://github.com/OfficialSquidProductions/camera-stats/releases/tag/v0.1.0-alpha.1). The download/status page is [camerastats.squidproductions.org](https://camerastats.squidproductions.org). Camera Stats SP 0.1.0 (1) is available to the invited account owner in TestFlight on iPhone, iPad, and Mac. See [validation evidence](docs/VALIDATION.md).
 
 To build from source, open `apple/CameraStats.xcodeproj`, choose `CameraStats`, and build for macOS 14+, iPhone, or iPad on iOS/iPadOS 17+. No package downloads or runtime network access are required. Configure your own signing team for device distribution.
+
+The additive Android/Windows clients use a shared Kotlin/JVM report engine and Compose screens, native SQLite adapters, system file pickers and platform PDF renderers. Their [build instructions](clients/README.md) require JDK 21 and the pinned Gradle wrapper; Android builds also require an SDK whose terms the owner has accepted. Windows installers bundle their JVM. The Apple interface and engine remain unchanged. See the [architecture and interoperability gates](docs/CLIENT_ARCHITECTURE.md).
 
 Tap **Open The Last Light demo** on Today. It opens a separate fictional report with three completed takes for shot 3A and the shared 16-shot plan across eight scenes from Production Desk's sample script, including Maya, Eli, Jonah, and the lighthouse. Read the full script from Today, inspect the shared circled take 2, preview a landscape PDF, or save/import a `.camreport`. Creating another demo never overwrites an existing report. The demo follows the shared The Last Light test story; this task does not modify the other applications.
 
@@ -35,6 +37,6 @@ The project generator does not select a developer team or perform signing/accoun
 
 ## Current boundaries
 
-Android and Windows are required by the plan, but have no implemented clients yet. The portable format remains independent of the Apple interface. Desktop footage playback/skimming, exact-frame seeking, slate detection/OCR, RAW decoding, media reconciliation, certified group-aware RED R3D/BRAW physical rename/copy/recovery, and tested NLE adapters are not implemented. Naming previews never touch camera files. No hardware, camera, codec, or NLE compatibility is claimed.
+Android and Windows field-reporting clients are implemented. Android phone/tablet instrumentation, signed-release installation/reopen/reinstall checks, and Windows bundled/installed-runtime tests use isolated CI machines; physical-device validation remains outstanding. Windows x64 installers are unsigned. The Android release identity stays local, outside the repository; CI receives signed APK bytes only. The portable format remains independent of the Apple interface. Desktop footage playback/skimming, exact-frame seeking, slate detection/OCR, RAW decoding, media reconciliation, certified group-aware RED R3D/BRAW physical rename/copy/recovery, and tested NLE adapters are not implemented. Naming previews never touch camera files. No hardware, camera, codec, or NLE compatibility is claimed.
 
-See [requirements and acceptance](docs/REQUIREMENTS.md), [format contract](docs/CAMREPORT.md), [validation](docs/VALIDATION.md), and [release checklist](docs/RELEASE.md). The 12-hour airplane-mode day, low-storage/power-loss testing, real-device tests, cross-platform exchange, media/SDK licensing, and real RAW/NLE certification are outstanding. Source is MIT licensed; third-party components retain their own licenses. The local website draft has no fabricated download or TestFlight links.
+See [requirements and acceptance](docs/REQUIREMENTS.md), [format contract](docs/CAMREPORT.md), [validation](docs/VALIDATION.md), and [release checklist](docs/RELEASE.md). The 12-hour airplane-mode day, physical low-storage/power-loss tests, real-device handoffs, media/SDK licensing, and real RAW/NLE certification are outstanding. Source is MIT licensed; third-party components retain their own licenses. The download page links only verified releases.

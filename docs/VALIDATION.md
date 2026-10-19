@@ -13,6 +13,20 @@ Validated on 2026-10-19 with Xcode 26.6 / Swift 6.3.3.
 
 ## Remaining validation
 
-Physical iPhone/iPad use and full interactive Mac document workflows need owner testing. Android and Windows apps remain unimplemented. Camera connection, media ingestion, slate OCR, exact-frame footage browsing, physical RAW renaming and certified NLE adapters are outside this field-alpha milestone. No camera or NLE hardware support is claimed.
+Physical iPhone/iPad use and full interactive Mac document workflows need owner testing. Camera connection, media ingestion, slate OCR, exact-frame footage browsing, physical RAW renaming and certified NLE adapters are outside this field-alpha milestone. No camera or NLE hardware support is claimed.
 
 The first Mac TestFlight upload warned that debug symbols were missing. Upload succeeded, but native Mac crash symbolication is limited in build 1; future archives must include dSYMs.
+
+## Android / Windows field clients
+
+- Twenty JVM/native desktop tests passed locally and on Windows: unchanged Swift fixture reading, CRC/SHA/ZIP/schema rejection, Unicode and 1,000-take roundtrips, conservative merges, SQLite reopen/full/stale/interrupted transactions and subprocess crash recovery, rejected-save UI preservation, protected exports, native PDF rendering and the rendered shared demo flow.
+- Windows x64 EXE/MSI packages were built on Windows Server 2025 CI. Both the packaged JVM app and the actual MSI-installed app passed native SQLite reopen, report roundtrip, PDF and image-resource checks. The installers are unsigned. Physical Windows 10/11 and arm64 validation remain outstanding.
+- Each API 35 Pixel 6 phone and Pixel C tablet passed three instrumentation tests: exact demo/next-take inheritance, activity recreation and rotation; system SQLite reopen/prior snapshot and native PDF rendering; actual Storage Access Framework result-byte export/import into a separate report. Picker callbacks use test-owned MediaStore URIs; interactive navigation through every third-party document provider remains owner validation.
+- Native Android and Windows demo PDFs were rendered as four complete landscape pages; retained screenshots/pages were inspected. The new layout includes full fields and continuation pages; exact school-form parity remains unfinished.
+- The actual non-debuggable Android release APK was inspected for package/version, minimum API 26, target API 35, disabled OS backup and absence of Internet/camera/microphone/broad-storage permissions. The generated signature-level receiver permission is retained.
+- The owner approved a dedicated local Android signing identity. V2/V3 signatures and the expected public certificate were verified. Exact signed APK smoke checks passed on phone and tablet: installation, opening the shared demo, process reopening, reinstall with report preservation, and landscape layout. No private signing material is sent to CI.
+- Unchanged local Swift reader accepted actual Windows JVM exports: original three-take revision 4 and edited four-take revision 5. This proves interchange parsing, not complete physical cross-device handoff workflows.
+- Full native/interoperability run [39303095878](https://github.com/OfficialSquidProductions/camera-stats/actions/runs/39303095878) passed on source `9ed917c1ca18dbd389a7af1317883747fa2fcb6c`, including all 23 unchanged Apple regression tests and actual Windows-exported package reads. Signed-release run [39303095861](https://github.com/OfficialSquidProductions/camera-stats/actions/runs/39303095861) passed both device sizes. Final source's unsigned Android APK is byte-identical to the input used for the tested signed candidate.
+- Original dependency notice resources are retained; additional pinned notices are bundled and locally viewable. Windows checkout must preserve original notice bytes and the checker must stop the build on failure.
+
+No physical Android device, lower Android API baseline, 12-hour field day, full-storage power interruption or real camera/media/NLE certification is claimed.
