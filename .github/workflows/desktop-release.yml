@@ -35,6 +35,19 @@ jobs:
           distribution: temurin
           # setup-java's normalized SemVer for Temurin21.0.12.1+1; staging verifies the actual release file.
           java-version: '21.0.12+101.0'
+      - name: Fast native updater preflight against the previous public unsigned MSI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $previous=Join-Path $env:RUNNER_TEMP 'shot-reporter-updater-preflight'
+          gh release download v0.1.1-alpha.3 --repo $env:GITHUB_REPOSITORY --pattern Shot-Reporter-Windows-0.1.1-alpha.3.msi --dir $previous
+          if ($LASTEXITCODE -ne 0) {throw 'Previous MSI preflight download failed'}
+          $msi=Join-Path $previous 'Shot-Reporter-Windows-0.1.1-alpha.3.msi'
+          if ((Get-FileHash -LiteralPath $msi -Algorithm SHA256).Hash.ToLowerInvariant() -ne '319454e60bf5b651131c0edf1fe77d88a1ed3aba9f9934a6d7770d5e99ccc659') {throw 'Previous MSI hash mismatch'}
+          Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
+          $env:SHOT_REPORTER_UPDATE_TEST_MSI=$msi
+          ./clients/gradlew.bat -p clients -PskipAndroid=true :updates:test --tests '*NativeWindowsUpdateTests*' --no-daemon --console=plain
+          if ($LASTEXITCODE -ne 0) {exit $LASTEXITCODE}
       - name: Build minimal LGPL codec tools from hash-pinned official sources
         run: python tools/build_windows_ffmpeg.py --output "${{ runner.temp }}/shot-reporter-windows-codecs"
       - name: Validate all SDK-free core, persistence, media, updater and desktop UI tests
@@ -75,4 +88,4 @@ jobs:
       - name: Preserve test counts on failure without uploading SDKs, camera media or build folders
         if: failure()
         run: |
-          python -c "import pathlib,xml.etree.ElementTree as E; [print(p,E.parse(p).getroot().attrib) for p in pathlib.Path('clients').glob('*/build/test-results/test/TEST-*.xml')]"
+          python -c "import pathlib,xml.etree.ElementTree as E; [(print(p,E.parse(p).getroot().attrib),[print((e.text or '')[:4000]) for e in E.parse(p).getroot().iter('failure')]) for p in pathlib.Path('clients').glob('*/build/test-results/test/TEST-*.xml')]"
