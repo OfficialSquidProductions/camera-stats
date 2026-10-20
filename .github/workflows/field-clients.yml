@@ -1,7 +1,7 @@
 name: Field clients
 on:
   push:
-    branches: [main, windows-android-field-alpha, shot-reporter-rebrand]
+    branches: [windows-android-field-alpha, shot-reporter-rebrand]
     paths: ['clients/**', 'fixtures/**', 'licenses/clients/**', 'tools/fixtures/**', 'tools/*client*', 'tools/generate_cross_platform_fixtures.py', 'tools/publish_development_evidence.py', '.github/workflows/field-clients.yml']
   workflow_dispatch:
 permissions:

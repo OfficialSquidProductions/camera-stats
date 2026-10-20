@@ -33,8 +33,8 @@ class DesktopMediaState(val home:Path):AutoCloseable {
     var frames by mutableStateOf(emptyList<FrameRef>());private set
     var playing by mutableStateOf(false)
     var reverse by mutableStateOf(false)
-    var ffmpeg by mutableStateOf(System.getenv("SHOT_REPORTER_FFMPEG") ?: "")
-    var ffprobe by mutableStateOf(System.getenv("SHOT_REPORTER_FFPROBE") ?: "")
+    var ffmpeg by mutableStateOf(System.getenv("SHOT_REPORTER_FFMPEG") ?: bundledMediaTool("ffmpeg") ?: "")
+    var ffprobe by mutableStateOf(System.getenv("SHOT_REPORTER_FFPROBE") ?: bundledMediaTool("ffprobe") ?: "")
     var redline by mutableStateOf(System.getenv("SHOT_REPORTER_REDLINE") ?: "")
     var brawHelper by mutableStateOf(System.getenv("SHOT_REPORTER_BRAW_HELPER") ?: "")
     private val pool=Executors.newSingleThreadExecutor {r->Thread(r,"Shot Reporter media worker").apply {isDaemon=true}}

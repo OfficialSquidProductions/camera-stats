@@ -1,0 +1,77 @@
+name: Desktop Windows release candidate
+on:
+  push:
+    branches: [raw-media-and-updates]
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact reviewed source commit to build
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 55
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.camera-gradle-ci
+      SKIKO_RENDER_API: SOFTWARE_COMPAT
+      EXPECTED_SOURCE_SHA: ${{ inputs.expected_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Require the exact reviewed source commit
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and ($env:EXPECTED_SOURCE_SHA -notmatch '^[0-9a-f]{40}$' -or $env:GITHUB_SHA -ne $env:EXPECTED_SOURCE_SHA)) { throw 'This dispatch must name its exact reviewed commit' }
+          if ((git rev-parse HEAD) -ne $env:GITHUB_SHA) { throw 'Checked-out source differs from this run' }
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21.0.12.1+1'
+      - name: Build minimal LGPL codec tools from hash-pinned official sources
+        run: python tools/build_windows_ffmpeg.py --output "${{ runner.temp }}/shot-reporter-windows-codecs"
+      - name: Validate all SDK-free core, persistence, media, updater and desktop UI tests
+        working-directory: clients
+        run: ./gradlew.bat -PskipAndroid=true :core:test :jdbc:test :media-worker:test :updates:test :desktop:test --no-daemon --console=plain
+      - name: Retain SDK-free test results before native rejection tests rerun the updater suite
+        run: |
+          python -c "import pathlib,shutil; out=pathlib.Path('windows-preflight-test-results'); out.mkdir(); [shutil.copy2(p,out/(p.parent.parent.parent.parent.name+'-'+p.name)) for p in pathlib.Path('clients').glob('*/build/test-results/test/TEST-*.xml')]"
+      - name: Build the bundled-runtime manual Windows MSI
+        working-directory: clients
+        run: |
+          ./gradlew.bat -PskipAndroid=true "-PdesktopCodecResources=$env:SHOT_REPORTER_CODEC_RESOURCES" :desktop:createDistributable :desktop:packageMsi --no-daemon --console=plain
+          if ($LASTEXITCODE -ne 0) {exit $LASTEXITCODE}
+          $msi=@(Get-ChildItem desktop/build/compose/binaries/main/msi -Filter '*.msi')
+          if ($msi.Count -ne 1) {throw 'Expected one Windows MSI'}
+          "SHOT_REPORTER_UPDATE_TEST_MSI=$($msi[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Native Windows updater rejects the actual unsigned MSI and same-length tampering
+        working-directory: clients
+        run: ./gradlew.bat -PskipAndroid=true :updates:test --tests '*NativeWindowsUpdateTests*' --rerun-tasks --no-daemon --console=plain
+      - name: Packaged runtime and actual previous-to-new MSI upgrade in isolated report storage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $launchers=@(Get-ChildItem clients/desktop/build/compose/binaries/main/app -Recurse -Filter 'Shot Reporter.exe')
+          if ($launchers.Count -ne 1) {throw 'Expected one packaged launcher'}
+          ./tools/windows_desktop_release_smoke.ps1 -MSI $env:SHOT_REPORTER_UPDATE_TEST_MSI -PackagedLauncher $launchers[0].FullName -Output "$env:RUNNER_TEMP/shot-reporter-windows-release-qa"
+      - name: Stage only release files, exact Java source and curated synthetic-test evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/stage_windows_desktop_release.py --codecs "${{ runner.temp }}/shot-reporter-windows-codecs" --qa "${{ runner.temp }}/shot-reporter-windows-release-qa" --output windows-release
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Shot-Reporter-Windows-0.2.0-alpha.1-${{ github.sha }}
+          path: windows-release/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve test counts on failure without uploading SDKs, camera media or build folders
+        if: failure()
+        run: |
+          python -c "import pathlib,xml.etree.ElementTree as E; [print(p,E.parse(p).getroot().attrib) for p in pathlib.Path('clients').glob('*/build/test-results/test/TEST-*.xml')]"

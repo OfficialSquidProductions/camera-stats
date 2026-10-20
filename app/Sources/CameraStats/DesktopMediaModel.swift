@@ -21,7 +21,9 @@ final class DesktopWorkerClient:@unchecked Sendable {
         guard FileManager.default.isExecutableFile(atPath:java.path) else {throw ReportError.invalid("The desktop worker is not bundled in this build. Build the local desktop development app with tools/build_desktop_media_dev.py. Existing reports remain available.")}
         let process=Process(),stdin=Pipe(),stdout=Pipe()
         process.executableURL=java
-        process.arguments=["-Xmx512m","-cp",worker.appendingPathComponent("lib/*").path,"org.squidproductions.camerastats.media.WorkerKt",home.path,worker.appendingPathComponent("bin/ffmpeg").path,worker.appendingPathComponent("bin/ffprobe").path]
+        let native=worker.appendingPathComponent("native/libsqlitejdbc.dylib")
+        let nativeOptions=FileManager.default.fileExists(atPath:native.path) ? ["-Dorg.sqlite.lib.path="+native.deletingLastPathComponent().path,"-Dorg.sqlite.lib.name=libsqlitejdbc.dylib"] : []
+        process.arguments=["-Xmx512m"]+nativeOptions+["-cp",worker.appendingPathComponent("lib/*").path,"org.squidproductions.camerastats.media.WorkerKt",home.path,worker.appendingPathComponent("bin/ffmpeg").path,worker.appendingPathComponent("bin/ffprobe").path]
         process.standardInput=stdin;process.standardOutput=stdout;process.standardError=FileHandle.nullDevice
         lock.lock();guard active==nil,!cancelled else {lock.unlock();throw ReportError.invalid("The desktop worker was cancelled or is still stopping. Originals and journals retained.")};active=process
         do {try process.run();lock.unlock()} catch {active=nil;lock.unlock();throw error}

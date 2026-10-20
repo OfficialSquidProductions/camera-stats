@@ -10,6 +10,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4");testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.11.4")
 }
 tasks.processResources {
+    from(rootProject.projectDir.parentFile.resolve("licenses/desktop-windows/NOTICE.txt")) {rename {"windows-codec-notices.txt"}}
     from(rootProject.projectDir.parentFile.resolve("licenses/clients/OPEN_SOURCE_NOTICES.txt")) {rename {"open-source-notices.txt"}}
     from(rootProject.projectDir.parentFile.resolve("fixtures/camreport/owner-demo.json")) {rename {"demo-report.json"}}
     from(rootProject.projectDir.parentFile.resolve("website/assets/SP_GREEN.png")) {rename {"brand.png"}}
@@ -21,7 +22,8 @@ compose.desktop {
         mainClass="org.squidproductions.camerastats.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Msi,TargetFormat.Exe)
-            packageName="Shot Reporter";packageVersion="0.1.1";description="Local camera reporting by Squid Productions";vendor="Squid Productions"
+            providers.gradleProperty("desktopCodecResources").orNull?.let {appResourcesRootDir.set(project.file(it))}
+            packageName="Shot Reporter";packageVersion="0.2.0";description="Local camera reporting by Squid Productions";vendor="Squid Productions"
             modules("java.sql","java.desktop","java.logging","java.naming","jdk.unsupported","jdk.crypto.ec")
             windows {iconFile.set(project.file("src/main/resources/icon.ico"));menuGroup="Squid Productions";shortcut=true;upgradeUuid="c3774fda-7962-4264-a9bc-c428176d12b4"}
         }

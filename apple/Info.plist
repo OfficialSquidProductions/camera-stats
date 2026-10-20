@@ -26,9 +26,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.1</string>
+	<string>0.2.0</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationCategoryType</key>
@@ -47,6 +47,10 @@
 	<true/>
 	<key>SUEnableSystemProfiling</key>
 	<false/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/OfficialSquidProductions/shot-reporter/main/updates/macos/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>qCE0vmWIGNh4ng7VgqyFKqnBY8jc90Wm9QouY7g01cs=</string>
 	<key>SURequireSignedFeed</key>
 	<true/>
 	<key>SUScheduledCheckInterval</key>
@@ -56,7 +60,7 @@
 	<key>SUVerifyUpdateBeforeExtraction</key>
 	<true/>
 	<key>ShotReporterDistribution</key>
-	<string>development</string>
+	<string>direct</string>
 	<key>ShotReporterUpdateChannel</key>
 	<string>alpha</string>
 	<key>UIApplicationSceneManifest</key>

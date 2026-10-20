@@ -25,6 +25,9 @@ fun main(args:Array<String>) {
     if(args.firstOrNull()=="--verify-report-upgrade") {
         require(args.size==3);verifyReportUpgrade(Path.of(args[1]),Path.of(args[2]));return
     }
+    if(args.firstOrNull()=="--desktop-release-smoke") {require(args.size==3);windowsDesktopReleaseSmoke(Path.of(args[1]),Path.of(args[2]));return}
+    if(args.firstOrNull()=="--seed-desktop-upgrade-journal") {require(args.size==1);seedDesktopUpgradeJournal();return}
+    if(args.firstOrNull()=="--verify-desktop-upgrade") {require(args.size==3);verifyDesktopUpgrade(Path.of(args[1]),Path.of(args[2]));return}
     application {
     val root=remember {reportDataRoot()}
     val gateway=remember {DesktopGateway(root)}
@@ -54,7 +57,7 @@ class DesktopGateway(private val root:Path):PlatformGateway {
     var failure:(Exception)->Unit={}
     private val prefs=Properties().apply {runCatching {Files.newInputStream(root.resolve("preferences.properties")).use {load(it)}}}
     override fun demo():Report=Exchange.decode(resource("demo-report.json"))
-    override fun notices():String=resource("open-source-notices.txt").toString(Charsets.UTF_8)
+    override fun notices():String=resource("open-source-notices.txt").toString(Charsets.UTF_8)+"\n\n"+resource("windows-codec-notices.txt").toString(Charsets.UTF_8)+"\n\n"+bundledMediaLegalNotices()
     override fun preference(key:String,fallback:String):String=prefs.getProperty(key,fallback)
     override fun preference(key:String,value:String,write:Boolean) {prefs.setProperty(key,value);runCatching {Files.createDirectories(root);Files.newOutputStream(root.resolve("preferences.properties")).use {prefs.store(it,"Shot Reporter local display preferences")}}}
     override fun importFile(complete:(ByteArray?)->Unit) {SwingUtilities.invokeLater {
@@ -119,5 +122,5 @@ fun verifyReportUpgrade(expectedFile:Path,output:Path) {
     Files.createDirectories(output);val bytes=Exchange.export(restored,"Shot Reporter upgrade verification")
     check(Exchange.read(bytes).report==expected);durableExport(output.resolve("Shot-Reporter-upgraded.camreport"),bytes)
     durableExport(output.resolve("Shot-Reporter-upgraded.pdf"),host.pdf(restored))
-    Files.writeString(output.resolve("PASS.txt"),"PASS: Camera Stats 0.1.0 installed runtime -> Shot Reporter 0.1.1 MSI upgrade; normal legacy data directory, active report, every field/history/identity/revision, previous snapshot, preferences and camreport roundtrip preserved.\n")
+    Files.writeString(output.resolve("PASS.txt"),"PASS: previous installed runtime -> Shot Reporter MSI upgrade; normal legacy data directory, active report, every field/history/identity/revision, previous snapshot, preferences and camreport roundtrip preserved.\n")
 }
