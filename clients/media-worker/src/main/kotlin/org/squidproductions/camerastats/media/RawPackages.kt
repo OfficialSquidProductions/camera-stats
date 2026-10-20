@@ -23,7 +23,7 @@ object RawPackages {
         }
         val braw=paths.filter {Files.isRegularFile(it,LinkOption.NOFOLLOW_LINKS) && it.fileName.toString().endsWith(".braw",true) && result.none {g->it.startsWith(g.directory)}}
         for((folder,clips) in braw.groupBy {it.parent}) {
-            if(clips.size!=1) continue // Mixed folders need a vendor-enumerated membership decision; do not guess.
+            if(clips.size!=1 || result.any {it.directory.startsWith(folder)}) continue // Never let an overlapping parent swallow another RAW package or standalone media.
             val members=files(folder)
             val issue=if(members.any {it!=clips.single() && it.fileName.toString().endsWith(".braw",true)} || result.any {it.directory.startsWith(folder)}) "Overlapping or multiple RAW packages require isolated working-copy folders; membership will not be guessed." else ""
             result+=RawPackage(folder,clips.single(),"braw-folder",members,issue.ifBlank {issue(folder)})

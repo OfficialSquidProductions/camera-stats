@@ -13,8 +13,12 @@ class Decoder(val ffmpeg:Path,val ffprobe:Path,val redline:Path?=System.getenv("
     private fun isBraw(path:Path)=path.fileName.toString().endsWith(".braw",true)
     private fun braw()=BrawAdapter(brawHelper ?: error("Choose the locally built Shot Reporter BRAW helper and an authorized Blackmagic RAW SDK/runtime. Vendor software is never downloaded automatically."),this)
     data class Result(val bytes:ByteArray,val error:String)
+    fun requireExecutable(executable:Path) {
+        require(Files.isRegularFile(executable)) {"Choose a regular local command-line executable, not an application folder: $executable"}
+        require(Files.isExecutable(executable)) {"This tool cannot execute from its current location: $executable. "+if(System.getProperty("os.name").startsWith("Mac")) "macOS Sandbox does not grant execution through a file picker; use a properly installed tool in Applications." else "Check the local tool installation and executable permissions."}
+    }
     fun execute(executable:Path,args:List<String>,timeout:Long=120,limit:Int=8*1024*1024):Result {
-        require(Files.isRegularFile(executable) && Files.isExecutable(executable)) {"Configure the local FFmpeg and ffprobe executables before decoding."}
+        requireExecutable(executable)
         val p=ProcessBuilder(listOf(executable.toAbsolutePath().toString())+args).start()
         val pool=Executors.newFixedThreadPool(2)
         fun collect(input:java.io.InputStream,max:Int):ByteArray=input.use {stream ->val out=ByteArrayOutputStream();val buffer=ByteArray(8192);while(true) {val n=stream.read(buffer);if(n<0) break;require(out.size()+n<=max) {"Decoder output exceeded the safe limit."};out.write(buffer,0,n)};out.toByteArray()}

@@ -22,6 +22,22 @@ class RawPackageTests {
         assertEquals(2,RawPackages.discover(temp).single().files.size)
         Files.write(folder.resolve("second.braw"),byteArrayOf(3));assertTrue(RawPackages.discover(temp).isEmpty())
     }
+    @Test fun overlappingBrawParentNeverHidesRedPackageOrStandaloneVideo() {
+        val source=Files.createDirectory(temp.resolve("mixed-source"))
+        val braw=source.resolve("isolated-later.braw");Files.write(braw,byteArrayOf(1,2,3))
+        val red=Files.createDirectory(source.resolve("A.RDC"));Files.write(red.resolve("A_001.R3D"),byteArrayOf(4,5))
+        val movie=source.resolve("independent.mp4");Files.copy(Path.of(System.getProperty("sampleMedia")),movie)
+        val before=Files.walk(source).use {it.filter {p->Files.isRegularFile(p)}.toList().associateWith(::sha256)}
+        assertEquals(listOf("red-rdc"),RawPackages.discover(source).map {it.kind})
+        MediaRepository(temp.resolve("mixed-project")).use {repo->
+            val decoder=Decoder(Path.of(checkNotNull(System.getenv("SHOT_REPORTER_FFMPEG"))),Path.of(checkNotNull(System.getenv("SHOT_REPORTER_FFPROBE"))),null,null)
+            val snapshot=MediaService(repo,decoder).register(source,"A","A001","mixed")
+            assertEquals(setOf("isolated-later.braw","A_001.R3D","independent.mp4"),snapshot.clips.map {it.originalName}.toSet())
+            assertTrue(snapshot.clips.single {it.originalName=="independent.mp4"}.metadata.readable)
+            val raw=snapshot.clips.single {it.originalName=="isolated-later.braw"};assertNull(raw.packageRoot);assertFalse(raw.metadata.readable)
+        }
+        before.forEach {(p,hash)->assertEquals(hash,sha256(p))}
+    }
     private fun syntheticGroup():Triple<MediaRepository,MediaService,Report> {
         val folder=Files.createDirectories(temp.resolve("source/Group.RDC"));Files.copy(Path.of(System.getProperty("sampleMedia")),folder.resolve("primary.mp4"));Files.write(folder.resolve("unknown.sidecar"),"sidecar fixture".toByteArray())
         val repo=MediaRepository(temp.resolve("project"));val decoder=Decoder(Path.of(checkNotNull(System.getenv("SHOT_REPORTER_FFMPEG"))),Path.of(checkNotNull(System.getenv("SHOT_REPORTER_FFPROBE"))),null);val svc=MediaService(repo,decoder)

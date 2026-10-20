@@ -7,6 +7,19 @@ import SwiftUI
 @testable import CameraStats
 
 final class DesktopMediaTests:XCTestCase {
+    func testToolSelectionResolvesInstalledBundleAndRejectsDirectoriesAndNonExecutables()throws {
+        let root=try temporary(),bundle=root.appendingPathComponent("Helper.app"),folder=bundle.appendingPathComponent("Contents/MacOS")
+        try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+        let executable=folder.appendingPathComponent("ShotReporterBRAW")
+        try Data("local executable fixture".utf8).write(to:executable)
+        try FileManager.default.setAttributes([.posixPermissions:0o700],ofItemAtPath:executable.path)
+        XCTAssertEqual(try DesktopToolSelection.executable(in:bundle,name:"ShotReporterBRAW"),executable)
+        XCTAssertEqual(try DesktopToolSelection.executable(in:executable,name:"ShotReporterBRAW"),executable)
+        XCTAssertThrowsError(try DesktopToolSelection.executable(in:folder,name:"ShotReporterBRAW"))
+        try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:executable.path)
+        XCTAssertThrowsError(try DesktopToolSelection.executable(in:bundle,name:"ShotReporterBRAW"))
+        XCTAssertThrowsError(try DesktopToolSelection.executable(in:bundle,name:"REDline"))
+    }
     func temporary()throws->URL {
         let url=FileManager.default.temporaryDirectory.appendingPathComponent("ShotReporterDesktop-"+UUID().uuidString,isDirectory:true)
         try FileManager.default.createDirectory(at:url,withIntermediateDirectories:true)

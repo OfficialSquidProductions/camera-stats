@@ -1,8 +1,12 @@
-# Desktop 0.2.0-alpha.1
+# Desktop 0.2.0-alpha.2 candidate
 
 This desktop milestone adds local footage review to the existing reporting alpha. Mac uses native SwiftUI with a bundled JVM media worker; Windows uses Compose with the same media engine. iPhone/iPad, Android and TestFlight releases remain on 0.1.1. This is an early alpha, not the complete Revision 6 product plan.
 
 The [Windows x64 release](https://github.com/OfficialSquidProductions/shot-reporter/releases/tag/v0.2.0-alpha.1) is published from source `38eb04d69c38cf9969d5cf4e6c960c6c527de6fc`. [Native CI 39350127661](https://github.com/OfficialSquidProductions/shot-reporter/actions/runs/39350127661) passed its full SDK-free tests, unsigned/tampered rejection, actual public 0.1.1→0.2.0 MSI upgrade and installed media smoke. Six vendor-media checks are skipped on SDK-free Windows; native RAW is unvalidated. The new Mac binary has passed notarization, stapling and Gatekeeper assessment; signed-sandbox acceptance still needs a manual check. Existing Mac/mobile downloads remain on 0.1.1.
+
+## Alpha 2 corrections
+
+An overlapping BRAW parent folder no longer hides a nested RED package or independent video. Ambiguous BRAW remains visible and requires an isolated working-copy folder. Tool selection resolves installed application bundles, validates the executable before saving, and gives an actionable sandbox error. The local BRAW helper rejects a runtime whose version differs from its build SDK before using the vendor ABI. The Windows candidate also checks the actual alpha 1 media journal across its manual MSI upgrade. These changes do not enable automatic update feeds or certify new camera support.
 
 ## Included workflow
 
@@ -12,7 +16,7 @@ The Last Light demo remains a separate report, with the same eight-scene script 
 
 ## Packaging and upgrades
 
-Mac release metadata is 0.2.0 (3), with release label 0.2.0-alpha.1. The media package targets macOS 14+ on Apple silicon; the previous reporting-only universal Mac alpha remains available for Intel Macs. Windows MSI ProductVersion is 0.2.0 and retains the existing UpgradeCode. Windows installers are unsigned manual downloads; a trusted publisher certificate is not configured.
+The new candidate metadata is Mac 0.2.0 (4), with release label 0.2.0-alpha.2. The media package targets macOS 14+ on Apple silicon; the previous reporting-only universal Mac alpha remains available for Intel Macs. The alpha 2 Windows MSI ProductVersion is 0.2.1 and retains the existing UpgradeCode. Windows installers are unsigned manual downloads; a trusted publisher certificate is not configured.
 
 Keep the existing application identifiers and report storage paths. Mac must retain the existing sandbox storage model unless an explicit, separately validated compatibility migration is implemented. Media schema upgrades retain a consistent pre-upgrade SQLite snapshot. Report schema 1 and `.camreport` exchange remain compatible. Export an independent report backup before upgrading. Copy journals are recoverable operation records, not a footage backup.
 

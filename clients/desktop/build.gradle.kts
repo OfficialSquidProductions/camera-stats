@@ -23,7 +23,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Msi,TargetFormat.Exe)
             providers.gradleProperty("desktopCodecResources").orNull?.let {appResourcesRootDir.set(project.file(it))}
-            packageName="Shot Reporter";packageVersion="0.2.0";description="Local camera reporting by Squid Productions";vendor="Squid Productions"
+            packageName="Shot Reporter";packageVersion="0.2.1";description="Local camera reporting by Squid Productions";vendor="Squid Productions"
             modules("java.sql","java.desktop","java.logging","java.naming","jdk.unsupported","jdk.crypto.ec")
             windows {iconFile.set(project.file("src/main/resources/icon.ico"));menuGroup="Squid Productions";shortcut=true;upgradeUuid="c3774fda-7962-4264-a9bc-c428176d12b4"}
         }
