@@ -8,6 +8,7 @@ from pathlib import Path
 import plistlib
 import re
 import subprocess
+from verify_macos_entitlements import verify_entitlement_policy
 
 
 def main():
@@ -48,11 +49,13 @@ def main():
     for item in plan['macho']:
         sign(path_for(item['path']),profiles/item['entitlements'] if item['entitlements'] else None)
     for relative in plan['nestedBundles']:
-        sign(path_for(relative))
+        profile=plan.get('nestedBundleEntitlements',{}).get(relative)
+        sign(path_for(relative),profiles/profile if profile else None)
     sign(app,profiles/plan['outerEntitlements'])
     with log.open('ab') as stream:
         subprocess.run(['codesign','--verify','--deep','--strict','--verbose=2',str(app)],check=True,stdout=stream,stderr=subprocess.STDOUT)
         subprocess.run(['codesign','--verify','--strict','-R=anchor apple generic and identifier "org.squidproductions.camerastats" and certificate leaf[subject.OU] = "FZ298DXLS3"',str(app)],check=True,stdout=stream,stderr=subprocess.STDOUT)
+    verify_entitlement_policy(app,host_sandboxed=plan['hostSandboxed'])
     result.write_text(json.dumps({'signed':True,'identity':args_identity,'team':'FZ298DXLS3','objects':signed,'notarized':False,'stapled':False,'installed':False,'note':'No publication; coordinator must notarize/staple/rearchive and validate actual signed runtime/upgrade before activating feed.'},indent=2)+'\n')
     print(result)
 
