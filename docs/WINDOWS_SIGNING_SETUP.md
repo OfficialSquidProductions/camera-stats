@@ -1,5 +1,7 @@
 # Windows signing and offline update preparation
 
+The owner currently chooses manual Windows downloads. No signing-service enrollment or live Windows update feed is authorized by that choice. The tooling and options below remain preparation for possible future work.
+
 This is preparation guidance, not an enrolled signing service or active feed. The
 released alpha 2 Windows package is unsigned and has no bundled update policy.
 One manual bootstrap installation is required. A feed cannot add trust to an
