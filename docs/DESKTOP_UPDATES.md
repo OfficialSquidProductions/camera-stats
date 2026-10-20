@@ -2,7 +2,7 @@
 
 Shot Reporter retains bundle/application ID `org.squidproductions.camerastats`, Windows MSI UpgradeCode `c3774fda-7962-4264-a9bc-c428176d12b4`, existing report storage and separate desktop media journals. No application/source footprint moves reports into a new branding directory.
 
-The update implementation does **not** enable live updates by itself. Desktop releases require the platform checks below; publication does not activate an unconfigured feed. No Shot Reporter update signing credentials, Windows publisher certificate or live feeds have been created. Current Windows downloads are unsigned. Development builds explain this state and cannot automatically install them.
+The update implementation does **not** enable live updates by itself. Desktop releases require the platform checks below; publication does not activate an unconfigured feed. A dedicated Mac Sparkle key has been created with explicit owner approval; only its public key is in source. No Windows publisher certificate or live update feed is configured. Current Windows downloads are unsigned. Development builds explain this state and cannot automatically install them.
 
 ## Existing suite behavior inspected
 
@@ -16,7 +16,7 @@ The native app uses pinned Sparkle 2.10. `tools/build_apple.py --distribution de
 
 Direct distribution checks the current stable bundle identity and Apple Team `FZ298DXLS3`; unsigned hosts are disallowed. Signed archive verification occurs before extraction. `SURequireSignedFeed` is enabled: appcast and release notes must also be signed with the dedicated Shot Reporter Ed25519 key through Sparkle's official tooling. Numeric monotonic `CFBundleVersion` orders updates; semantic display versions are separate. Stable excludes alpha; Alpha accepts alpha and stable.
 
-The tentative feed address is `https://raw.githubusercontent.com/OfficialSquidProductions/shot-reporter/main/updates/macos/appcast.xml`. It has not been published by this work, and no trusted public key is configured. The updater therefore fails closed. The direct-distribution release process must package and sign the Sparkle components and notarize the host correctly before activation. Creating a persistent dedicated signing key needs separate user consent.
+The tentative feed address is `https://raw.githubusercontent.com/OfficialSquidProductions/shot-reporter/main/updates/macos/appcast.xml`. It has not been published. The dedicated public key is recorded in the direct-build generator; release packaging omits feed/key activation unless explicitly enabled after acceptance. An unconfigured distributed package therefore fails closed. The direct-distribution release process must package and sign the Sparkle components and notarize the host correctly before activation. The owner approved the dedicated Mac key separately; its private material remains in Keychain.
 
 ## Windows trust protocol
 
@@ -71,7 +71,7 @@ The native Windows PowerShell/COM/MSI elevation, publisher check, actual package
 
 Mac tests cover update policy/save/cancel/media locks, native Sparkle delegate gates and isolated old/new recovery fixtures. Ephemeral fixture Ed25519 signatures and directory swaps are not a real Sparkle installation. A dedicated signed/notarized older-to-newer update and relaunch remains a release gate.
 
-Before activation: obtain user authorization for a persistent dedicated signing identity/key if needed, approve any certificate purchase, configure trusted public metadata, produce signed/notarized platform builds, validate native upgrade/recovery, review release notes and request publication/feed authorization. This engineering work creates no feed, account, key, purchase, TestFlight upload, release or merge.
+Before activation: obtain user authorization for a persistent dedicated signing identity/key if needed, approve any certificate purchase, configure trusted public metadata, produce signed/notarized platform builds, validate native upgrade/recovery, review release notes and request publication/feed authorization. The current desktop release work is authorized to publish verified desktop downloads and eligible feeds; it does not authorize mobile/TestFlight changes or new paid signing services. Unfulfilled native signing/upgrade gates still block feed activation.
 
 Primary platform references: [Windows Installer ProductVersion](https://learn.microsoft.com/en-us/windows/win32/msi/productversion), [major upgrades](https://learn.microsoft.com/en-us/windows/win32/msi/major-upgrades), [installer options](https://learn.microsoft.com/en-us/windows/win32/msi/standard-installer-command-line-options), [Authenticode verification](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature), [read-only MSI database access](https://learn.microsoft.com/en-us/windows/win32/msi/installer-opendatabase).
 
