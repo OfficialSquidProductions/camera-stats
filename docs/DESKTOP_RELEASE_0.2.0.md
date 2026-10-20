@@ -1,8 +1,8 @@
-# Desktop 0.2.0-alpha.2 candidate
+# Desktop 0.2.0-alpha.2
 
 This desktop milestone adds local footage review to the existing reporting alpha. Mac uses native SwiftUI with a bundled JVM media worker; Windows uses Compose with the same media engine. iPhone/iPad, Android and TestFlight releases remain on 0.1.1. This is an early alpha, not the complete Revision 6 product plan.
 
-The [Windows x64 release](https://github.com/OfficialSquidProductions/shot-reporter/releases/tag/v0.2.0-alpha.1) is published from source `38eb04d69c38cf9969d5cf4e6c960c6c527de6fc`. [Native CI 39350127661](https://github.com/OfficialSquidProductions/shot-reporter/actions/runs/39350127661) passed its full SDK-free tests, unsigned/tampered rejection, actual public 0.1.1→0.2.0 MSI upgrade and installed media smoke. Six vendor-media checks are skipped on SDK-free Windows; native RAW is unvalidated. The new Mac binary has passed notarization, stapling and Gatekeeper assessment; signed-sandbox acceptance still needs a manual check. Existing Mac/mobile downloads remain on 0.1.1.
+The [Windows x64 patch release](https://github.com/OfficialSquidProductions/shot-reporter/releases/tag/v0.2.0-alpha.2) is published from source `81c1a9e3582117ed3a20a9d95848311adcf70e60`. [Native CI39354358031](https://github.com/OfficialSquidProductions/shot-reporter/actions/runs/39354358031) passed shared tests, actual alpha1→alpha2 manual MSI upgrade, report/history/preferences and prior v1/actual alpha1 v2 media-journal preservation, native unsigned/tampered rejection, and installed media smoke. Windows vendor RAW remains unvalidated. The new Mac binary passed notarization, stapling, Gatekeeper, and a signed sandbox host exercising its exact worker bytes against real RED/BRAW samples, verified package copies, process reopen and retained undo. Its final manual file-picker/bookmark/reopen check remains pending, so Mac0.2 is not published. Existing Mac/mobile downloads remain on0.1.1.
 
 ## Alpha 2 corrections
 
