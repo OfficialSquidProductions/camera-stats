@@ -25,6 +25,8 @@ class WindowsInstallerLauncher:InstallerLauncher {
         check(Files.isRegularFile(shell,LinkOption.NOFOLLOW_LINKS))
         val command=Base64.getEncoder().encodeToString(windowsInstallScript.toByteArray(Charsets.UTF_16LE))
         val builder=ProcessBuilder(shell.toString(),"-NoLogo","-NoProfile","-NonInteractive","-EncodedCommand",command)
+        // A pwsh7 parent can supply an incompatible module path. Only OS PowerShell modules may implement trust checks.
+        builder.environment()["PSModulePath"]=system.resolve("System32/WindowsPowerShell/v1.0/Modules").toString()
         builder.environment()["SHOT_REPORTER_UPDATE_TICKET"]=ticket.toAbsolutePath().toString()
         builder.redirectErrorStream(true);builder.redirectOutput(ticket.parent.resolve("helper.log").toFile());val helper=builder.start()
         // Readiness is preflight only. Without an explicit commit, parent death cannot start MSI.
@@ -86,7 +88,17 @@ ${'$'}parentExited = ${'$'}false
 ${'$'}installerLock = ${'$'}null
 ${'$'}installerExitCode = ${'$'}null
 function CertSHA(${'$'}cert) { return ([BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash(${'$'}cert.RawData))).Replace('-','').ToLowerInvariant() }
+function WriteResult(${'$'}value) {
+    ${'$'}pending = Join-Path ${'$'}homePath 'install-result.partial'
+    ${'$'}bytes = [Text.Encoding]::UTF8.GetBytes((${'$'}value | ConvertTo-Json))
+    ${'$'}stream = [IO.File]::Open(${'$'}pending,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+    try { ${'$'}stream.Write(${'$'}bytes,0,${'$'}bytes.Length); ${'$'}stream.Flush(${'$'}true) } finally { ${'$'}stream.Dispose() }
+    [IO.File]::Move(${'$'}pending,${'$'}resultPath)
+}
 try {
+    foreach (${'$'}module in @('Microsoft.PowerShell.Management','Microsoft.PowerShell.Utility','Microsoft.PowerShell.Security')) {
+        Import-Module -Name (Join-Path ${'$'}PSHOME ('Modules/' + ${'$'}module + '/' + ${'$'}module + '.psd1')) -ErrorAction Stop
+    }
     ${'$'}t = Get-Content -LiteralPath ${'$'}ticketPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if (${'$'}t.schema -ne 1 -or ${'$'}t.appID -ne 'org.squidproductions.camerastats') { throw 'Invalid install ticket.' }
     function VerifyInstaller {
@@ -94,8 +106,8 @@ try {
     if (${'$'}others.Count -gt 0) { throw 'Close other Shot Reporter or Camera Stats instances before installing an update.' }
     ${'$'}item = Get-Item -LiteralPath ${'$'}t.installer
     if ((${'$'}item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or ${'$'}item.Length -ne ${'$'}t.size) { throw 'Installer identity changed.' }
-    if ((Get-FileHash -LiteralPath ${'$'}t.installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne ${'$'}t.sha256.ToLowerInvariant()) { throw 'Installer SHA-256 mismatch.' }
-    ${'$'}signature = Get-AuthenticodeSignature -LiteralPath ${'$'}t.installer
+    if ((Microsoft.PowerShell.Utility\Get-FileHash -LiteralPath ${'$'}t.installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne ${'$'}t.sha256.ToLowerInvariant()) { throw 'Installer SHA-256 mismatch.' }
+    ${'$'}signature = Microsoft.PowerShell.Security\Get-AuthenticodeSignature -LiteralPath ${'$'}t.installer
     if (${'$'}signature.Status -ne 'Valid' -or (CertSHA ${'$'}signature.SignerCertificate) -ne ${'$'}t.signerSHA256.ToLowerInvariant()) { throw 'Installer publisher verification failed.' }
     ${'$'}engine = New-Object -ComObject WindowsInstaller.Installer
     ${'$'}db = ${'$'}engine.OpenDatabase(${'$'}t.installer,0)
@@ -124,10 +136,10 @@ try {
     ${'$'}p = Start-Process -FilePath (Join-Path ${'$'}env:SystemRoot 'System32/msiexec.exe') -ArgumentList ${'$'}arguments -Wait -PassThru
     ${'$'}installerExitCode = ${'$'}p.ExitCode
     ${'$'}ok = ${'$'}p.ExitCode -eq 0 -or ${'$'}p.ExitCode -eq 3010
-    @{schema=1;success=${'$'}ok;exitCode=${'$'}p.ExitCode;version=${'$'}t.version;build=${'$'}t.build;finishedAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath ${'$'}resultPath -Encoding UTF8
     if (-not ${'$'}ok) { throw ('Windows Installer returned ' + ${'$'}p.ExitCode + '. Original data and update logs retained.') }
+    WriteResult @{schema=1;success=${'$'}true;exitCode=${'$'}p.ExitCode;version=${'$'}t.version;build=${'$'}t.build;finishedAt=[DateTime]::UtcNow.ToString('o')}
 } catch {
-    @{schema=1;success=${'$'}false;exitCode=${'$'}installerExitCode;version=${'$'}t.version;build=${'$'}t.build;error=${'$'}_.Exception.Message;finishedAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath ${'$'}resultPath -Encoding UTF8
+    WriteResult @{schema=1;success=${'$'}false;exitCode=${'$'}installerExitCode;version=${'$'}t.version;build=${'$'}t.build;error=${'$'}_.Exception.Message;finishedAt=[DateTime]::UtcNow.ToString('o')}
 } finally {
     if (${'$'}installerLock) { ${'$'}installerLock.Dispose() }
     if (${'$'}parentExited -and ${'$'}t -and (Test-Path -LiteralPath ${'$'}t.relaunch -PathType Leaf)) { Start-Process -FilePath ${'$'}t.relaunch }
