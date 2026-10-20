@@ -3,6 +3,8 @@
 import argparse
 import hashlib
 import json
+import os
+import plistlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -36,6 +38,13 @@ original=digest(source)
 sidecar=source.with_suffix('.sidecar')
 original_sidecar=digest(sidecar) if sidecar.exists() else None
 version=run('version')
+mismatch=out/'mismatched-runtime/BlackmagicRawAPI.framework/Resources'
+mismatch.mkdir(parents=True)
+(mismatch/'Info.plist').write_bytes(plistlib.dumps({'CFBundleShortVersionString':'0.0-incompatible'}))
+environment=dict(os.environ,SHOT_REPORTER_BRAW_LIBRARY=str(mismatch.parent.parent))
+rejected=subprocess.run([str(helper),'version'],capture_output=True,text=True,timeout=10,env=environment)
+assert rejected.returncode==2 and 'runtime version does not match' in rejected.stderr and not rejected.stdout.strip(),rejected
+checks.append('incompatible runtime rejected before loading vendor ABI')
 probe=run('probe',source)
 assert probe['codec']=='braw' and probe['container']=='braw' and probe['readable']
 assert probe['frames']>=1 and probe['width']>0 and probe['height']>0

@@ -40,10 +40,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $previous=Join-Path $env:RUNNER_TEMP 'shot-reporter-updater-preflight'
-          gh release download v0.1.1-alpha.3 --repo $env:GITHUB_REPOSITORY --pattern Shot-Reporter-Windows-0.1.1-alpha.3.msi --dir $previous
+          gh release download v0.2.0-alpha.1 --repo $env:GITHUB_REPOSITORY --pattern Shot-Reporter-Windows-0.2.0-alpha.1.msi --dir $previous
           if ($LASTEXITCODE -ne 0) {throw 'Previous MSI preflight download failed'}
-          $msi=Join-Path $previous 'Shot-Reporter-Windows-0.1.1-alpha.3.msi'
-          if ((Get-FileHash -LiteralPath $msi -Algorithm SHA256).Hash.ToLowerInvariant() -ne '319454e60bf5b651131c0edf1fe77d88a1ed3aba9f9934a6d7770d5e99ccc659') {throw 'Previous MSI hash mismatch'}
+          $msi=Join-Path $previous 'Shot-Reporter-Windows-0.2.0-alpha.1.msi'
+          if ((Get-FileHash -LiteralPath $msi -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'f0280917aea08623e801f05e2a1820074efeb5d312320ea5eeefe442564fea5d') {throw 'Previous MSI hash mismatch'}
           Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
           $env:SHOT_REPORTER_UPDATE_TEST_MSI=$msi
           ./clients/gradlew.bat -p clients -PskipAndroid=true :updates:test --tests '*NativeWindowsUpdateTests*' --no-daemon --console=plain
@@ -81,7 +81,7 @@ jobs:
         run: python tools/stage_windows_desktop_release.py --codecs "${{ runner.temp }}/shot-reporter-windows-codecs" --qa "${{ runner.temp }}/shot-reporter-windows-release-qa" --output windows-release
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: Shot-Reporter-Windows-0.2.0-alpha.1-${{ github.sha }}
+          name: Shot-Reporter-Windows-0.2.0-alpha.2-${{ github.sha }}
           path: windows-release/*
           if-no-files-found: error
           retention-days: 14

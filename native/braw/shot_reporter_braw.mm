@@ -297,6 +297,12 @@ struct Session {
             }
             CFRelease(bundleURL);
         }
+#ifdef SHOT_REPORTER_BRAW_EXPECTED_VERSION
+        if (frameworkVersion != SHOT_REPORTER_BRAW_EXPECTED_VERSION)
+            throw Failure("Blackmagic RAW runtime version does not match the SDK used to build this helper; install matching versions before decoding");
+#else
+        throw Failure("Rebuild this helper with the SDK runtime version check before decoding");
+#endif
         CFStringRef path = CFStringCreateWithCString(nullptr, library, kCFStringEncodingUTF8);
         factory.value = CreateBlackmagicRawFactoryInstanceFromPath(path);
         CFRelease(path);

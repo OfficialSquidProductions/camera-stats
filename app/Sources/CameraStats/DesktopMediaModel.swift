@@ -4,6 +4,16 @@ import Observation
 import AppKit
 import CameraStatsCore
 
+enum DesktopToolSelection {
+    static func executable(in selection:URL,name:String)throws->URL {
+        let tool=selection.pathExtension.lowercased()=="app" ? selection.appendingPathComponent("Contents/MacOS/"+name):selection
+        let values=try tool.resourceValues(forKeys:[.isRegularFileKey])
+        guard values.isRegularFile==true else {throw ReportError.invalid("Choose the installed \(name) command-line executable or its application bundle.")}
+        guard FileManager.default.isExecutableFile(atPath:tool.path) else {throw ReportError.invalid("\(name) cannot execute from this location. macOS Sandbox does not grant execution through a file picker. Use a properly installed tool in Applications.")}
+        return tool
+    }
+}
+
 final class DesktopWorkerClient:@unchecked Sendable {
     let home:URL
     let worker:URL
@@ -74,8 +84,14 @@ private final class DesktopScopedAccess:@unchecked Sendable {
         if let data=try? url.bookmarkData(options:.withSecurityScope,includingResourceValuesForKeys:nil,relativeTo:nil) {var values=preferences.array(forKey:scopeKey) as? [Data] ?? [];if !values.contains(data) {values.append(data);preferences.set(values,forKey:scopeKey)}}
     }
     func chooseDirectory(_ title:String)->URL? {let panel=NSOpenPanel();panel.title=title;panel.canChooseDirectories=true;panel.canChooseFiles=false;panel.allowsMultipleSelection=false;guard panel.runModal() == .OK,let url=panel.url else {return nil};keepAccess(url);return url}
-    func chooseRedline() {let panel=NSOpenPanel();panel.title="Choose installed REDline executable";panel.canChooseDirectories=false;panel.canChooseFiles=true;panel.allowsMultipleSelection=false;guard panel.runModal() == .OK,let url=panel.url else {return};keepAccess(url);redline=url.path;notice="REDline selected. Register the working-copy folder again to refresh decoder availability."}
-    func chooseBrawHelper() {let panel=NSOpenPanel();panel.title="Choose locally built Shot Reporter BRAW helper";panel.canChooseDirectories=false;panel.canChooseFiles=true;panel.allowsMultipleSelection=false;guard panel.runModal() == .OK,let url=panel.url else {return};keepAccess(url);brawHelper=url.path;notice="BRAW helper selected. Register the isolated working-copy folder again to refresh decoder availability."}
+    func chooseRedline() {chooseTool(name:"REDline") {redline=$0}}
+    func chooseBrawHelper() {chooseTool(name:"ShotReporterBRAW") {brawHelper=$0}}
+    private func chooseTool(name:String,save:(String)->Void) {
+        let panel=NSOpenPanel();panel.title="Choose installed \(name) executable or application";panel.directoryURL=URL(fileURLWithPath:"/Applications",isDirectory:true);panel.canChooseDirectories=false;panel.canChooseFiles=true;panel.allowsMultipleSelection=false
+        guard panel.runModal() == .OK,let url=panel.url else {return}
+        let scoped=url.startAccessingSecurityScopedResource();defer {if scoped {url.stopAccessingSecurityScopedResource()}}
+        do {let executable=try DesktopToolSelection.executable(in:url,name:name);keepAccess(url);save(executable.path);error=nil;notice="\(name) selected. Register the working-copy folder again to refresh decoder availability."} catch {self.error=error.localizedDescription}
+    }
     func request<T:Decodable>(_ payload:[String:Any],as type:T.Type,accept:@escaping (T)->Void) {
         guard !DesktopUpdateActivity.installing else {error="An update is being installed. New media operations are paused until installation finishes or is cancelled.";return}
         guard !busy else {return};busy=true;error=nil;cancellationRequested=false

@@ -46,5 +46,19 @@ fun verifyDesktopUpgrade(expected:Path,output:Path) {
     val home=reportDataRoot().resolve("desktop-media/release-fixture")
     MediaRepository(home).use {repo->check(repo.snapshot().audit.single().action=="interrupted-copy-fixture")}
     check(Files.list(home).use {it.anyMatch {path->path.fileName.toString().startsWith("media-before-v2-")}})
-    Files.writeString(output.resolve("PASS.txt"),"PASS: previous public Shot Reporter MSI -> desktop0.2.0; normal legacy report root, reports/history/preferences and synthetic v1 media journal preserved; v2 migration kept independent prior-schema backup.\n")
+    verifyPriorDesktopMedia(reportDataRoot().resolve("desktop-media/alpha1-fixture"))
+    Files.writeString(output.resolve("PASS.txt"),"PASS: previous public alpha1/MSI0.2.0 -> alpha2/MSI0.2.1; reports/history/preferences and actual alpha1 v2 media journal preserved; synthetic v1 migration kept independent prior-schema backup.\n")
+}
+
+/** Read back the real previous installed runtime's completed media workflow after the MSI upgrade. */
+fun verifyPriorDesktopMedia(home:Path) {
+    MediaRepository(home).use {repo->
+        val state=repo.snapshot();val clip=state.clips.single();val file=state.files.single()
+        check(state.roots.single().id==clip.rootId && file.id==clip.fileId)
+        check(sha256(Path.of(state.roots.single().path).resolve(file.relative))==file.sha256)
+        check(state.slates.single().let {it.clipId==clip.id && it.scene=="3A" && it.take=="2"})
+        check(state.associations.single().clipId==clip.id)
+        check(state.jobs.single().let {it.state=="undone" && it.items.single().sourceSHA256==file.sha256})
+        check(state.audit.isNotEmpty())
+    }
 }

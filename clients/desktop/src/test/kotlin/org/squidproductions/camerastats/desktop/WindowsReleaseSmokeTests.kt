@@ -16,5 +16,6 @@ class WindowsReleaseSmokeTests {
         windowsDesktopReleaseSmoke(destination,Path.of(checkNotNull(System.getProperty("sampleMedia"))),Decoder(Path.of(ffmpeg),Path.of(ffprobe)))
         assertTrue(Files.readString(destination.resolve("PASS.txt")).contains("unchanged synthetic originals"))
         assertTrue(Files.isRegularFile(destination.resolve("synthetic-source/A001_C001.mp4")))
+        verifyPriorDesktopMedia(destination.resolve("media"))
     }
 }

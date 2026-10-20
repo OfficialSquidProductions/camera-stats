@@ -31,7 +31,7 @@ class RedlineAdapter(private val tool:Path,private val decoder:Decoder) {
     }
     // Kept vendor-specific: REDline metadata-only success is status 1. Render processes remain strict status 0.
     private fun queryMetadata(path:Path):String {
-        require(Files.isRegularFile(tool) && Files.isExecutable(tool)) {"Configure the separately installed REDline executable."}
+        decoder.requireExecutable(tool)
         val process=ProcessBuilder(listOf(tool.toAbsolutePath().toString())+metadataArguments(path)).start()
         val pool=Executors.newFixedThreadPool(2)
         fun collect(input:java.io.InputStream,limit:Int)=input.use {stream->
