@@ -100,8 +100,8 @@ def main():
     parser.add_argument('--gradle', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--app-input', type=Path, help='Existing unsigned Release app; omitted builds current Xcode project')
-    parser.add_argument('--version', default='0.2.0-alpha.2')
-    parser.add_argument('--build', type=int, default=4)
+    parser.add_argument('--version', default='0.2.0-alpha.3')
+    parser.add_argument('--build', type=int, default=5)
     parser.add_argument('--public-update-key', help='Public Ed25519 key only; never pass a private key')
     parser.add_argument('--unsandboxed-host', action='store_true', help='Explicit direct-distribution model; requires data-root compatibility acceptance')
     parser.add_argument('--allow-dirty', action='store_true', help='Review candidate only; manifest forbids public release until rebuilt clean')
@@ -146,7 +146,7 @@ def main():
         raise RuntimeError('Unexpected app identity')
     if str(info.get('CFBundleVersion')) != str(args.build) or info.get('CFBundleShortVersionString') not in {args.version, args.version.split('-',1)[0]}:
         raise RuntimeError('Build source must already have reviewed release version/build')
-    info.update({'ShotReporterDistribution':'direct', 'ShotReporterReleaseVersion':args.version, 'ShotReporterUpdateChannel':'alpha', 'SURequireSignedFeed':True, 'SUVerifyUpdateBeforeExtraction':True, 'SUAllowsAutomaticUpdates':False, 'SUEnableAutomaticChecks':True, 'SUAutomaticallyUpdate':False, 'SUEnableSystemProfiling':False, 'SUShowReleaseNotes':True, 'SUScheduledCheckInterval':86400})
+    info.update({'ShotReporterDistribution':'direct', 'ShotReporterReleaseVersion':args.version, 'ShotReporterUpdateChannel':'alpha', 'SURequireSignedFeed':True, 'SUSignedFeedFailureExpirationInterval':0, 'SUVerifyUpdateBeforeExtraction':True, 'SUAllowsAutomaticUpdates':False, 'SUEnableAutomaticChecks':True, 'SUAutomaticallyUpdate':False, 'SUEnableSystemProfiling':False, 'SUShowReleaseNotes':True, 'SUScheduledCheckInterval':86400})
     if args.public_update_key:
         info.update({'SUFeedURL':FEED, 'SUPublicEDKey':args.public_update_key})
     else:

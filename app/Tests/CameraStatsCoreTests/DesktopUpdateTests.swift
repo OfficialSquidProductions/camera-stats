@@ -19,12 +19,20 @@ final class DesktopUpdateTests:XCTestCase {
     }
     @MainActor func testMissingTrustSettingsAndInvalidChannelNeverStartUpdater() {
         let required:[String:Any] = ["SURequireSignedFeed":true,"SUVerifyUpdateBeforeExtraction":true,"SUAllowsAutomaticUpdates":false]
-        XCTAssertTrue(DesktopUpdatePolicy.completeSecuritySettings(required))
+        var complete=required;complete["SUSignedFeedFailureExpirationInterval"]=0
+        XCTAssertTrue(DesktopUpdatePolicy.completeSecuritySettings(complete))
+        XCTAssertFalse(DesktopUpdatePolicy.completeSecuritySettings(required))
         for key in required.keys {
-            var missing=required;missing.removeValue(forKey:key)
+            var missing=complete;missing.removeValue(forKey:key)
             XCTAssertFalse(DesktopUpdatePolicy.completeSecuritySettings(missing))
-            var changed=required;changed[key] = !(required[key] as! Bool)
+            var changed=complete;changed[key] = !(required[key] as! Bool)
             XCTAssertFalse(DesktopUpdatePolicy.completeSecuritySettings(changed))
+        }
+        var noFallback=required;noFallback["SUSignedFeedFailureExpirationInterval"]=0
+        XCTAssertTrue(DesktopUpdatePolicy.completeSecuritySettings(noFallback))
+        for invalid:Any in ["0",false,true,1,-1,0.01,Double.infinity,Double.nan] {
+            noFallback["SUSignedFeedFailureExpirationInterval"]=invalid
+            XCTAssertFalse(DesktopUpdatePolicy.completeSecuritySettings(noFallback),"Rejected interval: \(invalid)")
         }
         for value in [policy(.unconfigured),policy(.alpha,.unconfigured),policy(.alpha,.development),policy(key:nil),policy(trusted:false)] {
             let updates=DesktopUpdates(policy:value);var shown=0
@@ -34,6 +42,14 @@ final class DesktopUpdateTests:XCTestCase {
             updates.automaticChecks=true;XCTAssertFalse(updates.automaticChecks)
             updates.check();XCTAssertEqual(shown,1)
         }
+    }
+    @MainActor func testSparkleDelegateRejectsSkippedOrFailedFeedSignature() throws {
+        XCTAssertNoThrow(try DesktopUpdates.validateFeedSignature(.succeeded))
+        XCTAssertThrowsError(try DesktopUpdates.validateFeedSignature(.skipped))
+        XCTAssertThrowsError(try DesktopUpdates.validateFeedSignature(.failed))
+        let updates=DesktopUpdates(policy:policy())
+        let fixture=SPUStandardUpdaterController(startingUpdater:false,updaterDelegate:nil,userDriverDelegate:nil)
+        XCTAssertThrowsError(try updates.updater(fixture.updater,shouldProceedWithUpdate:SUAppcastItem.empty(),updateCheck:.updates))
     }
     func testChannelAndMonotonicBuildPolicy() throws {
         try policy().validate(build:"3",channel:"alpha",archive:archive)
