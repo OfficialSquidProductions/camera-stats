@@ -2,6 +2,8 @@
 
 This desktop milestone adds local footage review to the existing reporting alpha. Mac uses native SwiftUI with a bundled JVM media worker; Windows uses Compose with the same media engine. iPhone/iPad, Android and TestFlight releases remain on 0.1.1. This is an early alpha, not the complete Revision 6 product plan.
 
+The [Windows x64 release](https://github.com/OfficialSquidProductions/shot-reporter/releases/tag/v0.2.0-alpha.1) is published from source `38eb04d69c38cf9969d5cf4e6c960c6c527de6fc`. [Native CI 39350127661](https://github.com/OfficialSquidProductions/shot-reporter/actions/runs/39350127661) passed its full SDK-free tests, unsigned/tampered rejection, actual public 0.1.1→0.2.0 MSI upgrade and installed media smoke. Six vendor-media checks are skipped on SDK-free Windows; native RAW is unvalidated. The new Mac binary has passed notarization, stapling and Gatekeeper assessment; signed-sandbox acceptance still needs a manual check. Existing Mac/mobile downloads remain on 0.1.1.
+
 ## Included workflow
 
 Register a working folder read-only, inspect clip metadata, seek exact presentation frames, and review a short silent sequence forwards or backwards. Confirm slate labels manually, inspect report suggestions and explicitly associate a clip with a take. Save a naming preset, preflight copies, verify source/destination bytes and decoded frame evidence, resume interruption journals, and retain recovery files when undoing copies. RAW package copies preserve internal span names and sidecars inside a named outer folder. Inventory confirmation is explicit and does not certify a camera card is complete or safe to erase.
