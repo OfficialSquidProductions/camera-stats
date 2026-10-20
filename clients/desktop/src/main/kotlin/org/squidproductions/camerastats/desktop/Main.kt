@@ -25,16 +25,32 @@ fun main(args:Array<String>) {
     if(args.firstOrNull()=="--verify-report-upgrade") {
         require(args.size==3);verifyReportUpgrade(Path.of(args[1]),Path.of(args[2]));return
     }
+    if(args.firstOrNull()=="--desktop-release-smoke") {require(args.size==3);windowsDesktopReleaseSmoke(Path.of(args[1]),Path.of(args[2]));return}
+    if(args.firstOrNull()=="--seed-desktop-upgrade-journal") {require(args.size==1);seedDesktopUpgradeJournal();return}
+    if(args.firstOrNull()=="--verify-desktop-upgrade") {require(args.size==3);verifyDesktopUpgrade(Path.of(args[1]),Path.of(args[2]));return}
     application {
     val root=remember {reportDataRoot()}
     val gateway=remember {DesktopGateway(root)}
     val repositoryResult=remember {runCatching {Repository(JdbcDriver(root.resolve("reports.sqlite3")))}}
     val state=remember {AppState(repositoryResult.getOrNull(),gateway).also {model ->repositoryResult.exceptionOrNull()?.let {model.error="Local reports could not be opened. Existing bytes were preserved. ${it.message}"};gateway.failure={model.fail(it)}}}
     DisposableEffect(Unit) {onDispose {repositoryResult.getOrNull()?.close()}}
-    Window(onCloseRequest=::exitApplication,title="Shot Reporter",icon=BitmapPainter(gateway.icon),state=rememberWindowState(width=1100.dp,height=840.dp)) {FieldApp(state)}
+    val updates=remember {DesktopUpdates(root,gateway)}
+    DisposableEffect(updates) {onDispose {updates.close()}}
+    var footage by remember {mutableStateOf(false)}
+    Window(onCloseRequest=::exitApplication,title="Shot Reporter",icon=BitmapPainter(gateway.icon),state=rememberWindowState(width=1280.dp,height=900.dp)) {
+        androidx.compose.foundation.layout.Column {
+            androidx.compose.foundation.layout.Row {
+                androidx.compose.material3.TextButton(enabled=!updates.installing,onClick={footage=false}) {androidx.compose.material3.Text("Reports")}
+                androidx.compose.material3.TextButton(enabled=!updates.installing,onClick={footage=true}) {androidx.compose.material3.Text("Desktop footage")}
+                DesktopUpdateButton(updates,state,::exitApplication)
+            }
+            if(footage) key(state.report.id) {MediaWorkspace(state.report,state,root)} else FieldApp(state)
+        }
+    }
 }
 }
 class DesktopGateway(private val root:Path):PlatformGateway {
+    override val releaseLabel="DESKTOP ALPHA 0.2"
     override val label="Windows / desktop"
     private fun resource(name:String)=javaClass.getResourceAsStream("/$name")!!.use {it.readBytes()}
     override val brand:ImageBitmap=Image.makeFromEncoded(resource("brand.png")).toComposeImageBitmap()
@@ -42,7 +58,7 @@ class DesktopGateway(private val root:Path):PlatformGateway {
     var failure:(Exception)->Unit={}
     private val prefs=Properties().apply {runCatching {Files.newInputStream(root.resolve("preferences.properties")).use {load(it)}}}
     override fun demo():Report=Exchange.decode(resource("demo-report.json"))
-    override fun notices():String=resource("open-source-notices.txt").toString(Charsets.UTF_8)
+    override fun notices():String=resource("open-source-notices.txt").toString(Charsets.UTF_8)+"\n\n"+resource("windows-codec-notices.txt").toString(Charsets.UTF_8)+"\n\n"+bundledMediaLegalNotices()
     override fun preference(key:String,fallback:String):String=prefs.getProperty(key,fallback)
     override fun preference(key:String,value:String,write:Boolean) {prefs.setProperty(key,value);runCatching {Files.createDirectories(root);Files.newOutputStream(root.resolve("preferences.properties")).use {prefs.store(it,"Shot Reporter local display preferences")}}}
     override fun importFile(complete:(ByteArray?)->Unit) {SwingUtilities.invokeLater {
@@ -88,6 +104,7 @@ fun packagedSelfTest(root:Path) {
     val pdf=gateway.pdf(restored);check(pdf.take(5).toByteArray().toString(Charsets.US_ASCII)=="%PDF-");Files.write(root.resolve("package-test.pdf"),pdf)
     check(gateway.brand.width>0 && gateway.icon.width==256)
     check(gateway.notices().contains("Independent JPEG Group"))
+    check(java.security.Signature.getInstance("Ed25519").algorithm=="Ed25519") {"Bundled update signature provider is missing"}
     check(Files.isDirectory(Path.of(System.getProperty("java.home"),"legal"))) {"Bundled runtime license files are missing"}
     Files.writeString(root.resolve("PASS.txt"),"PASS: bundled JVM, native SQLite durable reopen, camreport roundtrip, PDF rendering and suite image resources.\n")
 }
@@ -106,5 +123,5 @@ fun verifyReportUpgrade(expectedFile:Path,output:Path) {
     Files.createDirectories(output);val bytes=Exchange.export(restored,"Shot Reporter upgrade verification")
     check(Exchange.read(bytes).report==expected);durableExport(output.resolve("Shot-Reporter-upgraded.camreport"),bytes)
     durableExport(output.resolve("Shot-Reporter-upgraded.pdf"),host.pdf(restored))
-    Files.writeString(output.resolve("PASS.txt"),"PASS: Camera Stats 0.1.0 installed runtime -> Shot Reporter 0.1.1 MSI upgrade; normal legacy data directory, active report, every field/history/identity/revision, previous snapshot, preferences and camreport roundtrip preserved.\n")
+    Files.writeString(output.resolve("PASS.txt"),"PASS: previous installed runtime -> Shot Reporter MSI upgrade; normal legacy data directory, active report, every field/history/identity/revision, previous snapshot, preferences and camreport roundtrip preserved.\n")
 }

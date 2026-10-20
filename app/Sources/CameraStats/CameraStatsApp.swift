@@ -14,7 +14,21 @@ struct ExportFile: FileDocument {
 }
 @main struct CameraStatsApp: App {
     @State private var store = Store()
-    var body: some Scene { WindowGroup { Workspace(store:store).frame(minWidth:320,minHeight:480) } }
+    #if os(macOS)
+    @State private var updates = DesktopUpdates()
+    @NSApplicationDelegateAdaptor(DesktopUpdateAppDelegate.self) private var appDelegate
+    #endif
+    var body: some Scene {
+        WindowGroup {
+            Workspace(store:store).frame(minWidth:320,minHeight:480)
+            #if os(macOS)
+                .task {updates.configure(store:store);appDelegate.updates=updates;updates.start()}
+            #endif
+        }
+        #if os(macOS)
+        .commands {DesktopUpdateCommands(updates:updates)}
+        #endif
+    }
 }
 struct Brand: View {
     var body: some View {
@@ -26,8 +40,21 @@ struct Brand: View {
 }
 enum Destination: String, CaseIterable, Identifiable {
     case today = "Today", log = "Log", review = "Review", saves = "Saves"
+    #if os(macOS)
+    case footage = "Footage"
+    #endif
     var id:String { rawValue }
-    var icon:String { switch self { case .today:return "sun.max"; case .log:return "list.bullet.rectangle"; case .review:return "checklist"; case .saves:return "externaldrive" } }
+    var icon:String {
+        switch self {
+        case .today:return "sun.max"
+        case .log:return "list.bullet.rectangle"
+        case .review:return "checklist"
+        case .saves:return "externaldrive"
+        #if os(macOS)
+        case .footage:return "film.stack"
+        #endif
+        }
+    }
 }
 struct Workspace: View {
     @Bindable var store: Store
@@ -53,7 +80,7 @@ struct Workspace: View {
             NavigationSplitView {
                 Brand().padding(.horizontal)
                 List(Destination.allCases,selection:$destination) { d in Label(d.rawValue,systemImage:d.icon).tag(d) }
-                VStack(alignment:.leading) { Text("LOCAL FIELD ALPHA 0.1").font(.caption.bold()); Text("\(store.report.values["title",default:"Untitled"]) · r\(store.report.revision)").font(.caption); status }.padding()
+                VStack(alignment:.leading) { Text("LOCAL DESKTOP ALPHA 0.2").font(.caption.bold()); Text("\(store.report.values["title",default:"Untitled"]) · r\(store.report.revision)").font(.caption); status }.padding()
             } detail: { content(destination ?? .today) }
             #else
             TabView(selection:$tab) {
@@ -67,6 +94,7 @@ struct Workspace: View {
         }
         .fileExporter(isPresented:$exporting,document:exportFile,contentType:exportType,defaultFilename:exportName) { result in switch result { case .failure(let e): store.error = e.localizedDescription; case .success: UserDefaults.standard.set(store.report.revision,forKey:"exported-"+store.slot) } }
         .sheet(item:$pending) { item in importSheet(item) }
+        .onChange(of:pending != nil) {_,value in store.pendingImport=value}
         .sheet(item:$pdfPreview) { item in PDFReviewScreen(item:item) }
         .alert("Shot Reporter",isPresented:Binding(get:{store.error != nil},set:{if !$0 { store.error = nil }})) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
     }
@@ -85,7 +113,15 @@ struct Workspace: View {
             #endif
             HStack { Text(store.report.values["title",default:"New production"]).font(.headline).lineLimit(1); Spacer(); Text("r\(store.report.revision)").monospacedDigit().foregroundStyle(.secondary) }.padding(.horizontal).padding(.vertical,8)
             Divider()
-            switch d { case .today: today; case .log: log; case .review: review; case .saves: saves }
+            switch d {
+            case .today: today
+            case .log: log
+            case .review: review
+            case .saves: saves
+            #if os(macOS)
+            case .footage: DesktopMediaWorkspace(store:store).id(store.report.id)
+            #endif
+            }
         }.navigationTitle(d.rawValue).background(Color("Canvas"))
         #if !os(macOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -185,10 +221,21 @@ struct Workspace: View {
                 Button("TV preset") { store.change { $0.namingTemplate = Naming.tv } }; Button("Movie preset") { store.change { $0.namingTemplate = Naming.movie } }
                 TextField("Custom naming template",text:Binding(get:{store.report.namingTemplate},set:{v in store.change{$0.namingTemplate = v}}),axis:.vertical)
                 if let e = store.report.active.first { Text((try? Naming.preview(template:store.report.namingTemplate,report:store.report,entry:e)) ?? "Missing values or invalid portable filename").font(.caption.monospaced()) }
+                #if os(macOS)
+                Text("Use Footage to review frames and prepare verified named copies. RAW review requires separately installed vendor tools. Slate OCR and NLE conform remain unfinished. Source footage stays unchanged.").font(.caption)
+                #else
                 Text("RAW decoding, slate OCR, physical file renaming, and NLE conform are not available in this field alpha. Source footage is never changed.").font(.caption)
+                #endif
             }
             Section("History") { ForEach(Array(store.report.history.suffix(30).reversed().enumerated()),id:\.offset) { _,h in VStack(alignment:.leading) { Text(h.summary).font(.caption); Text("\(h.device) · \(h.date.formatted())").font(.caption2).foregroundStyle(.secondary) } } }
-            Section("About") { Brand(); Text("0.1 owner-test alpha · macOS 14 / iOS 17 or later. Local files only. No accounts, telemetry, or cloud services. Export a backup to a second local destination regularly.").font(.caption) }
+            Section("About") {
+                Brand()
+                #if os(macOS)
+                Text("0.2 desktop alpha · macOS 14 or later. Local files only. No accounts, telemetry, or cloud services. Export a backup to a second local destination regularly.").font(.caption)
+                #else
+                Text("0.1 owner-test alpha · iOS 17 or later. Local files only. No accounts, telemetry, or cloud services. Export a backup to a second local destination regularly.").font(.caption)
+                #endif
+            }
         }.formStyle(.grouped).scrollContentBackground(.hidden).background(Color("Canvas"))
     }
     func export(_ type:UTType,_ ext:String,_ data:()->Data) { exportType = type; exportName = "Shot-Reporter-r\(store.report.revision).\(ext)"; exportFile = ExportFile(data:data()); exporting = true }

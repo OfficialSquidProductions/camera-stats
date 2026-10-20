@@ -9,6 +9,7 @@ import CameraStatsCore
     var slot = UUID().uuidString
     var documents: [(String,String)] = []
     var blocked = false
+    var pendingImport = false
     var lastExportedRevision: Int? { UserDefaults.standard.object(forKey:"exported-"+slot) as? Int }
     let root: URL
     let device: String

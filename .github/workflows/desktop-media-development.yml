@@ -1,0 +1,34 @@
+name: Desktop media development checks
+on:
+  push:
+    branches: [desktop-media-workflow]
+    paths: ['clients/**', 'fixtures/media/**', 'tools/prepare_windows_media_test_tools.py', '.github/workflows/desktop-media-development.yml']
+permissions:
+  contents: read
+concurrency:
+  group: desktop-media-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-media:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.camera-gradle-ci
+      SKIKO_RENDER_API: SOFTWARE_COMPAT
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare hash-pinned CI-only decoder tools
+        run: python tools/prepare_windows_media_test_tools.py
+      - name: Report regressions, media recovery, and desktop UI tests
+        working-directory: clients
+        run: ./gradlew.bat -PskipAndroid=true :core:test :jdbc:test :media-worker:test :desktop:test --no-daemon --console=plain
+      - name: Print test counts (no build or artifact uploads)
+        if: always()
+        run: |
+          python -c "import pathlib,xml.etree.ElementTree as E; [print(p.parent.parent.parent.parent.name, E.parse(p).getroot().attrib['name'], {k:E.parse(p).getroot().attrib.get(k) for k in ['tests','failures','errors','skipped']}) for p in pathlib.Path('clients').glob('*/build/test-results/test/TEST-*.xml')]"

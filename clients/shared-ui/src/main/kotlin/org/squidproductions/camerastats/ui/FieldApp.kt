@@ -18,6 +18,7 @@ import org.squidproductions.camerastats.core.*
 
 interface PlatformGateway {
     val label:String
+    val releaseLabel:String get()="FIELD ALPHA 0.1"
     val brand:ImageBitmap
     fun demo():Report
     fun notices():String
@@ -143,7 +144,7 @@ private val Green=Color(0xff237b20)
                                 }
                             }
                         }
-                        Text("FIELD ALPHA 0.1 · ${host.label} · Saved on your device",style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(vertical=12.dp))
+                        Text("${host.releaseLabel} · ${host.label} · Saved on your device",style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(vertical=12.dp))
                     }
                 }
             }
