@@ -50,6 +50,7 @@ fun main(args:Array<String>) {
 }
 }
 class DesktopGateway(private val root:Path):PlatformGateway {
+    override val releaseLabel="DESKTOP ALPHA 0.2"
     override val label="Windows / desktop"
     private fun resource(name:String)=javaClass.getResourceAsStream("/$name")!!.use {it.readBytes()}
     override val brand:ImageBitmap=Image.makeFromEncoded(resource("brand.png")).toComposeImageBitmap()

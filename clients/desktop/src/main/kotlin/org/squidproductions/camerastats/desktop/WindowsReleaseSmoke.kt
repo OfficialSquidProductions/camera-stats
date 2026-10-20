@@ -7,11 +7,12 @@ import org.squidproductions.camerastats.media.*
 import java.nio.file.*
 
 /** Explicit command-line QA entry points use only supplied runner directories and fictional fixtures. */
-fun windowsDesktopReleaseSmoke(output:Path,fixture:Path) {
+fun windowsDesktopReleaseSmoke(output:Path,fixture:Path,providedDecoder:Decoder?=null) {
     check(!Files.exists(output));Files.createDirectories(output)
-    val ffmpeg=Path.of(checkNotNull(bundledMediaTool("ffmpeg")) {"Bundled verified FFmpeg is missing"})
-    val ffprobe=Path.of(checkNotNull(bundledMediaTool("ffprobe")) {"Bundled verified ffprobe is missing"})
-    val decoder=Decoder(ffmpeg,ffprobe);check(decoder.version().contains("--disable-network"))
+    val decoder=providedDecoder ?: Decoder(Path.of(checkNotNull(bundledMediaTool("ffmpeg")) {"Bundled verified FFmpeg is missing"}),Path.of(checkNotNull(bundledMediaTool("ffprobe")) {"Bundled verified ffprobe is missing"}))
+    val ffmpeg=decoder.ffmpeg
+    val version=decoder.execute(ffmpeg,listOf("-version"),timeout=10).bytes.toString(Charsets.UTF_8)
+    check(version.contains("--disable-network") && version.contains("--disable-autodetect") && !version.contains("--enable-gpl") && !version.contains("--enable-nonfree"))
     val source=output.resolve("synthetic-source");Files.createDirectory(source);val original=source.resolve("A001_C001.mp4");Files.copy(fixture,original)
     val originalHash=sha256(original)
     val demo=DesktopGateway(output).demo().separateDemo();val base=demo.active.first {it.values["scene"]=="3A" && it.values["take"]=="2"}
