@@ -1,6 +1,6 @@
 # Mac desktop packaging
 
-The desktop `0.2.0-alpha.1` candidate uses Apple version `0.2.0`, numeric build `3`, stable application ID `org.squidproductions.camerastats`, and existing Apple team `FZ298DXLS3`. This profile supports **Apple Silicon, macOS 14 or later**. The retained reporting-only release provides the previous Intel/universal download; do not label this worker bundle universal.
+The desktop `0.2.0-alpha.3` bootstrap candidate uses Apple version `0.2.0`, numeric build `5`, stable application ID `org.squidproductions.camerastats`, and existing Apple team `FZ298DXLS3`. This profile supports **Apple Silicon, macOS 14 or later**. The retained reporting-only release provides the previous Intel/universal download; do not label this worker bundle universal.
 
 ## Prepare without signing or account access
 
@@ -43,14 +43,27 @@ No REDline executable, RED/BRAW SDK/runtime, camera clip, sidecar, downloaded sa
 
 Preparation emits `MAC_SIGNING_PLAN.json` and explicit entitlement profiles. `tools/sign_macos_candidate.py --candidate /private/candidate --identity EXISTING_CERTIFICATE_SHA1` performs a separately authorized existing-identity operation. It signs native objects and nested bundles from inside out with hardened runtime and timestamps, then the outer app. It never uses `--deep` to sign. Verification may use `--deep --strict`.
 
-The sandboxed host is the default and retains the existing selected-file entitlement and Sparkle IPC exceptions. Java uses the sandbox inheritance profile plus JIT permission; it does not receive a blanket library-validation exception. Other existing helper entitlements are preserved as needed while debug `get-task-allow` is removed. Signing failures or Keychain authorization prompts must be handled explicitly; do not change Keychain ACLs or weaken update/signature validation to work around them.
+The sandboxed host is the default and retains the existing selected-file entitlement and Sparkle IPC exceptions. Java uses the sandbox inheritance profile plus JIT permission; it does not receive a blanket library-validation exception. The Downloader XPC executable and its containing bundle receive the official optional sandbox-plus-network-client profile explicitly. Sparkle’s stock configuration leaves that profile disabled; its absence in an older release does not mean networking is broken. Installer XPC remains unsandboxed so it can replace and relaunch the application. Other existing helper entitlements are preserved as needed while debug `get-task-allow` is removed. `tools/verify_macos_entitlements.py --app /path/to/exported.app` checks this policy again after notarized export. Signing failures or Keychain authorization prompts must be handled explicitly; do not change Keychain ACLs or weaken update/signature validation to work around them.
 
 `--unsandboxed-host` only prepares an explicitly selected direct-distribution alternative. It is not the default and requires separate compatibility acceptance: old signed downloads are sandboxed, and sandboxed and ordinary report roots can both exist. Never silently select, merge, migrate or overwrite them. TestFlight/App Store builds remain sandboxed and contain no Sparkle framework.
 
-After successful native acceptance, the coordinator uses the established Xcode Developer-ID notarization workflow and existing authenticated account. No named `notarytool` profile is assumed. Notarize, staple and validate the complete final bundle, then create the final archive and checksums; changes after signing/notarization require repeating the affected steps. Keep the owner-installed app untouched during QA.
+After successful native acceptance, the coordinator uses the established Xcode Developer-ID notarization workflow and existing authenticated account. No named `notarytool` profile is assumed. Retrieve an accepted upload with `xcodebuild -exportNotarizedApp -archivePath /path/to/archive.xcarchive -exportPath /path/to/new-output`; a generic `-exportArchive` is not proof of notarization. Validate the stapled ticket, Gatekeeper assessment, signature and exported entitlement policy, then create the final archive and checksums; changes after signing/notarization require repeating the affected steps. Keep the owner-installed app untouched during QA.
 
 ## Required acceptance evidence
 
 Verify the actual signed sandbox host launching the staged JRE, signed SQLite library, FFmpeg and explicitly selected external tools. Test genuine RAW decoding with its sidecar/runtime, ordinary video, source preservation and saved report/media-journal restoration. A disposable uniquely identified app with its own sandbox container can check the native worker chain without touching owner reports; that does not replace final UI/file-picker/security-scoped bookmark acceptance.
 
 Before publishing a download, verify its exact signed/notarized/stapled bytes, arm64/macOS minimum, dependency and source assets, clean-source provenance and owner-data preservation. Before enabling an update feed, additionally test a genuinely signed older-to-newer install/relaunch and failure recovery in isolated storage. Directory-swap fixtures, ephemeral-key tests and reporting-only prior upgrade evidence do not certify that new native update path.
+
+## Stage authenticated update delivery without publishing
+
+After final signing/notarization/archive verification, run:
+
+```sh
+python3 tools/stage_macos_update.py \
+  --archive /private/Shot-Reporter-Mac-arm64-0.2.0-alpha.3.zip \
+  --notes /private/release-notes.txt \
+  --output /private/new-staged-feed
+```
+
+This uses the previously approved `shot-reporter` Keychain account through the official Sparkle signer, verifies independently with the public key, and emits `appcast.xml` plus `STAGED-UPDATE.json`. It never creates a key, publishes a feed, uploads media, installs an update or claims native upgrade acceptance. Keep a known compatible newer accepted release for genuine older→newer testing; the reporting-only public build cannot discover its first update.

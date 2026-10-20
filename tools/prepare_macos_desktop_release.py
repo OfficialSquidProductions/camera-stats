@@ -22,6 +22,14 @@ FFMPEG_SHA = '8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e'
 JDK_SOURCE_SHA = '573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234'
 FEED = 'https://raw.githubusercontent.com/OfficialSquidProductions/shot-reporter/main/updates/macos/appcast.xml'
 MODULES = 'java.base,java.sql,java.logging,java.naming,jdk.unsupported,jdk.crypto.ec'
+DOWNLOADER_BUNDLE = 'Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc'
+DOWNLOADER_EXECUTABLE = DOWNLOADER_BUNDLE + '/Contents/MacOS/Downloader'
+
+def macho_entitlement_profile(relative):
+    if relative == 'Contents/Resources/DesktopMedia/runtime/bin/java': return 'java.plist'
+    if relative == DOWNLOADER_EXECUTABLE: return 'downloader.plist'
+    return None
+
 CODEC_OPTIONS = [
     '--disable-everything', '--disable-autodetect', '--disable-network', '--disable-doc', '--disable-debug',
     '--enable-ffmpeg', '--enable-ffprobe', '--enable-protocol=file,pipe',
@@ -100,8 +108,8 @@ def main():
     parser.add_argument('--gradle', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--app-input', type=Path, help='Existing unsigned Release app; omitted builds current Xcode project')
-    parser.add_argument('--version', default='0.2.0-alpha.2')
-    parser.add_argument('--build', type=int, default=4)
+    parser.add_argument('--version', default='0.2.0-alpha.3')
+    parser.add_argument('--build', type=int, default=5)
     parser.add_argument('--public-update-key', help='Public Ed25519 key only; never pass a private key')
     parser.add_argument('--unsandboxed-host', action='store_true', help='Explicit direct-distribution model; requires data-root compatibility acceptance')
     parser.add_argument('--allow-dirty', action='store_true', help='Review candidate only; manifest forbids public release until rebuilt clean')
@@ -146,7 +154,7 @@ def main():
         raise RuntimeError('Unexpected app identity')
     if str(info.get('CFBundleVersion')) != str(args.build) or info.get('CFBundleShortVersionString') not in {args.version, args.version.split('-',1)[0]}:
         raise RuntimeError('Build source must already have reviewed release version/build')
-    info.update({'ShotReporterDistribution':'direct', 'ShotReporterReleaseVersion':args.version, 'ShotReporterUpdateChannel':'alpha', 'SURequireSignedFeed':True, 'SUVerifyUpdateBeforeExtraction':True, 'SUAllowsAutomaticUpdates':False, 'SUEnableAutomaticChecks':True, 'SUAutomaticallyUpdate':False, 'SUEnableSystemProfiling':False, 'SUShowReleaseNotes':True, 'SUScheduledCheckInterval':86400})
+    info.update({'ShotReporterDistribution':'direct', 'ShotReporterReleaseVersion':args.version, 'ShotReporterUpdateChannel':'alpha', 'SURequireSignedFeed':True, 'SUSignedFeedFailureExpirationInterval':0, 'SUVerifyUpdateBeforeExtraction':True, 'SUAllowsAutomaticUpdates':False, 'SUEnableAutomaticChecks':True, 'SUAutomaticallyUpdate':False, 'SUEnableSystemProfiling':False, 'SUShowReleaseNotes':True, 'SUScheduledCheckInterval':86400})
     if args.public_update_key:
         info.update({'SUFeedURL':FEED, 'SUPublicEDKey':args.public_update_key})
     else:
@@ -210,6 +218,9 @@ def main():
         java_entitlements.update({'com.apple.security.app-sandbox':True,'com.apple.security.inherit':True})
     (signing/'host.plist').write_bytes(plistlib.dumps(host_entitlements))
     (signing/'java.plist').write_bytes(plistlib.dumps(java_entitlements))
+    # Sparkle supports this optional least-privilege Downloader configuration.
+    # Installer remains unsandboxed so it can replace and relaunch the app.
+    (signing/'downloader.plist').write_bytes(plistlib.dumps({'com.apple.security.app-sandbox':True,'com.apple.security.network.client':True}))
     objects = []
     for file in sorted(app.rglob('*')):
         if file.is_symlink():
@@ -221,12 +232,12 @@ def main():
             raise RuntimeError('Vendor media/runtime entered distribution')
         detail = macho_info(file)
         if detail:
-            objects.append({'path':str(file.relative_to(app)), 'entitlements':'java.plist' if file == worker/'runtime/bin/java' else None, **detail})
+            objects.append({'path':str(file.relative_to(app)), 'entitlements':macho_entitlement_profile(str(file.relative_to(app))), **detail})
     bundles = sorted([p for p in app.rglob('*') if p.is_dir() and not p.is_symlink() and p.suffix in ['.framework','.xpc','.app']],key=lambda p:len(p.parts),reverse=True)
-    plan = {'identityTeam':'FZ298DXLS3','identifier':'org.squidproductions.camerastats','architecture':'arm64','hostSandboxed':not args.unsandboxed_host,'hardenedRuntime':True,'timestampRequired':True,'signingPerformed':False,'macho':sorted(objects,key=lambda x:len(Path(x['path']).parts),reverse=True),'nestedBundles':[str(p.relative_to(app)) for p in bundles],'outerBundle':'Shot Reporter.app','outerEntitlements':'host.plist','instructions':'Coordinator must sign nested Mach-O and bundles from inside out, then outer host; no --deep signing. Retain original Sparkle helper entitlements where applicable. Verify each signature and final bundle; notarize, staple, then rearchive. Do not install candidate over owner app for QA.'}
+    plan = {'identityTeam':'FZ298DXLS3','identifier':'org.squidproductions.camerastats','architecture':'arm64','hostSandboxed':not args.unsandboxed_host,'hardenedRuntime':True,'timestampRequired':True,'signingPerformed':False,'macho':sorted(objects,key=lambda x:len(Path(x['path']).parts),reverse=True),'nestedBundles':[str(p.relative_to(app)) for p in bundles],'nestedBundleEntitlements':{DOWNLOADER_BUNDLE:'downloader.plist'},'outerBundle':'Shot Reporter.app','outerEntitlements':'host.plist','instructions':'Coordinator must sign nested Mach-O and bundles from inside out, then outer host; no --deep signing. Retain original Sparkle helper entitlements where applicable. Verify each signature and final bundle; notarize, staple, then rearchive. Do not install candidate over owner app for QA.'}
     (output/'MAC_SIGNING_PLAN.json').write_text(json.dumps(plan,indent=2)+'\n')
     files = [{'name':p.name,'sha256':digest(p),'bytes':p.stat().st_size} for p in assets.iterdir() if p.is_file()]
-    manifest = {'version':args.version,'build':args.build,'platform':'macOS 14+ Apple Silicon arm64','sourceCommit':capture(['git','rev-parse','HEAD'],cwd=root),'sourceDirty':dirty,'updaterConfigured':bool(args.public_update_key),'feedURL':FEED if args.public_update_key else None,'runtimeModules':MODULES,'jdkVersion':'Temurin21.0.12.1+1','ffmpeg':recipe,'sourceAssets':files,'unsigned':True,'notarized':False,'rawVendorRuntimeBundled':False,'releaseReady':False,'releaseGates':['Reviewed clean source rebuild' if dirty else 'Final exact-source regression evidence','Coordinator signature/notarization/stapling','Actual signed app worker and external RAW tool acceptance','Existing report roots/preferences/media journal preservation','Published corresponding source assets','Real signed Sparkle older-to-newer upgrade/relaunch'+('' if args.public_update_key else ' and dedicated public-key/feed configuration')]}
+    manifest = {'version':args.version,'build':args.build,'platform':'macOS 14+ Apple Silicon arm64','sourceCommit':capture(['git','rev-parse','HEAD'],cwd=root),'sourceDirty':dirty,'updaterConfigured':bool(args.public_update_key),'feedURL':FEED if args.public_update_key else None,'runtimeModules':MODULES,'jdkVersion':'Temurin21.0.12.1+1','ffmpeg':recipe,'sourceAssets':files,'unsigned':True,'notarized':False,'rawVendorRuntimeBundled':False,'downloaderSandboxed':True,'releaseReady':False,'releaseGates':['Reviewed clean source rebuild' if dirty else 'Final exact-source regression evidence','Coordinator signature/notarization/stapling','Actual signed app worker and external RAW tool acceptance','Existing report roots/preferences/media journal preservation','Published corresponding source assets','Real signed Sparkle older-to-newer upgrade/relaunch'+('' if args.public_update_key else ' and dedicated public-key/feed configuration')]}
     (worker/'DISTRIBUTION.json').write_text(json.dumps(manifest,indent=2)+'\n')
     (output/'MAC_RELEASE_CANDIDATE.json').write_text(json.dumps(manifest,indent=2)+'\n')
     print(json.dumps({'app':str(app),'signingPlan':str(output/'MAC_SIGNING_PLAN.json'),'sourceAssets':str(assets),'releaseReady':False}))

@@ -62,7 +62,9 @@ struct DesktopUpdatePolicy {
         return Self(distribution:distribution,channel:Channel(rawValue:info["ShotReporterUpdateChannel"] as? String ?? "") ?? .unconfigured,build:UInt64(info["CFBundleVersion"] as? String ?? "") ?? 0,feed:(info["SUFeedURL"] as? String).flatMap(URL.init(string:)),publicKey:(info["SUPublicEDKey"] as? String).flatMap {Data(base64Encoded:$0)},hostTrusted:trustedBundle(bundle.bundleURL))
     }
     static func completeSecuritySettings(_ info:[String:Any]) -> Bool {
-        info["SURequireSignedFeed"] as? Bool == true &&
+        guard let expiration=info["SUSignedFeedFailureExpirationInterval"] as? NSNumber,
+              CFGetTypeID(expiration) != CFBooleanGetTypeID(), expiration.doubleValue == 0 else {return false}
+        return info["SURequireSignedFeed"] as? Bool == true &&
         info["SUVerifyUpdateBeforeExtraction"] as? Bool == true &&
         info["SUAllowsAutomaticUpdates"] as? Bool == false
     }
@@ -196,7 +198,13 @@ final class DesktopUpdateMediaLease {
         do {try gate.prepare();return true} catch {status=error.localizedDescription;show("Keep Shot Reporter open",status);gate.terminationCancelled();return false}
     }
     func allowedChannels(for updater:SPUUpdater)->Set<String> {policy.channel == .alpha ? ["alpha","stable"]:["stable"]}
-    func updater(_ updater:SPUUpdater,shouldProceedWithUpdate item:SUAppcastItem,updateCheck:SPUUpdateCheck)throws {try policy.validate(build:item.versionString,channel:item.channel,archive:item.fileURL)}
+    static func validateFeedSignature(_ status:SPUAppcastSigningValidationStatus)throws {
+        guard status == .succeeded else {throw DesktopUpdateError("The update feed signature could not be verified. Installation is disabled.")}
+    }
+    func updater(_ updater:SPUUpdater,shouldProceedWithUpdate item:SUAppcastItem,updateCheck:SPUUpdateCheck)throws {
+        try Self.validateFeedSignature(item.signingValidationStatus)
+        try policy.validate(build:item.versionString,channel:item.channel,archive:item.fileURL)
+    }
     func updater(_ updater:SPUUpdater,didFindValidUpdate item:SUAppcastItem) {availableVersion=item.displayVersionString;status="Shot Reporter \(item.displayVersionString) is available. Review release notes before installing."}
     func updaterDidNotFindUpdate(_ updater:SPUUpdater) {availableVersion=nil;status="You have the newest available \(channelName.lowercased()) build."}
     func updater(_ updater:SPUUpdater,didAbortWithError error:Error) {status="Update check or install stopped: \(error.localizedDescription). Local reports and media recovery journals remain in their existing locations.";gate.updateAborted()}
