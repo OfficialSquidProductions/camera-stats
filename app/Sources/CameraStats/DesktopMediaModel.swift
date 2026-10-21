@@ -59,7 +59,7 @@ private final class DesktopScopedAccess:@unchecked Sendable {
     let client:DesktopWorkerClient
     var snapshot=DesktopMediaSnapshot()
     var busy=false
-    var error:String?
+    var error:String? {didSet {if error != nil {DiagnosticsCenter.shared.capture(.media)}}}
     var notice:String?
     var selected:String?
     var frame:DesktopFrame?
@@ -72,7 +72,7 @@ private final class DesktopScopedAccess:@unchecked Sendable {
     private let preferences:UserDefaults
     private let scopeKey:String
     private let access=DesktopScopedAccess()
-    init(root:URL,reportID:String,worker:URL?=nil,preferences:UserDefaults = .standard) {
+    init(root:URL,reportID:String,worker:URL?=nil,preferences:UserDefaults = AppProfile.preferences) {
         let hash=Exchange.digest(Data(reportID.utf8))
         home=root.appendingPathComponent("desktop-media/"+hash,isDirectory:true);client=DesktopWorkerClient(home:home,worker:worker);self.preferences=preferences;scopeKey="desktop-media-scopes-"+hash
         for data in preferences.array(forKey:scopeKey) as? [Data] ?? [] {var stale=false;if let url=try? URL(resolvingBookmarkData:data,options:[.withSecurityScope,.withoutUI],bookmarkDataIsStale:&stale),url.startAccessingSecurityScopedResource() {access.add(url)}}

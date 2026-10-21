@@ -13,20 +13,24 @@ struct ExportFile: FileDocument {
     func fileWrapper(configuration:WriteConfiguration) throws -> FileWrapper { makeFileWrapper() }
 }
 @main struct CameraStatsApp: App {
-    @State private var store = Store()
+    @State private var diagnostics = DiagnosticsCenter.shared
+    @State private var store = Store(root:AppProfile.root,preferences:AppProfile.preferences)
+    #if !os(macOS)
+    @UIApplicationDelegateAdaptor(DiagnosticsAppDelegate.self) private var diagnosticsDelegate
+    #endif
     #if os(macOS)
     @State private var updates = DesktopUpdates()
     @NSApplicationDelegateAdaptor(DesktopUpdateAppDelegate.self) private var appDelegate
     #endif
     var body: some Scene {
         WindowGroup {
-            Workspace(store:store).frame(minWidth:320,minHeight:480)
+            Workspace(store:store).defaultAppStorage(AppProfile.preferences).frame(minWidth:320,minHeight:480)
             #if os(macOS)
                 .task {updates.configure(store:store);appDelegate.updates=updates;updates.start()}
             #endif
         }
         #if os(macOS)
-        .commands {DesktopUpdateCommands(updates:updates)}
+        .commands {DesktopUpdateCommands(updates:updates);SupportCommands()}
         #endif
     }
 }
@@ -73,6 +77,8 @@ struct Workspace: View {
     @AppStorage("detail") private var detail = "Standard"
     @State private var scene = ""
     @State private var pdfPreview: PDFReview?
+    @State private var showingSupport=false
+    private var diagnostics:DiagnosticsCenter {DiagnosticsCenter.shared}
     var scheme:ColorScheme? { theme == "Dark" ? .dark : theme == "Light" ? .light : nil }
     var body: some View {
         Group {
@@ -89,10 +95,14 @@ struct Workspace: View {
             #endif
         }.tint(Color("AccentColor")).preferredColorScheme(scheme).background(Color("Canvas"))
         .onOpenURL { readImport($0) }
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for:.reportBugRequested)) {_ in showingSupport=true}
+        #endif
         .fileImporter(isPresented:$importing,allowedContentTypes:[.camreport],allowsMultipleSelection:false) { result in
             do { if let url = try result.get().first { readImport(url) } } catch { store.error = error.localizedDescription }
         }
-        .fileExporter(isPresented:$exporting,document:exportFile,contentType:exportType,defaultFilename:exportName) { result in switch result { case .failure(let e): store.error = e.localizedDescription; case .success: UserDefaults.standard.set(store.report.revision,forKey:"exported-"+store.slot) } }
+        .fileExporter(isPresented:$exporting,document:exportFile,contentType:exportType,defaultFilename:exportName) { result in switch result { case .failure(let e): store.error = e.localizedDescription; case .success: AppProfile.preferences.set(store.report.revision,forKey:"exported-"+store.slot) } }
+        .sheet(isPresented:$showingSupport) {BugReportView(diagnostics:diagnostics)}
         .sheet(item:$pending) { item in importSheet(item) }
         .onChange(of:pending != nil) {_,value in store.pendingImport=value}
         .sheet(item:$pdfPreview) { item in PDFReviewScreen(item:item) }
@@ -111,7 +121,7 @@ struct Workspace: View {
             #if !os(macOS)
             Brand().padding(.horizontal).frame(maxWidth:.infinity,alignment:.leading)
             #endif
-            HStack { Text(store.report.values["title",default:"New production"]).font(.headline).lineLimit(1); Spacer(); Text("r\(store.report.revision)").monospacedDigit().foregroundStyle(.secondary) }.padding(.horizontal).padding(.vertical,8)
+            HStack { Text(store.report.values["title",default:"New production"]).font(.headline).lineLimit(1); Spacer(); Text("r\(store.report.revision)").monospacedDigit().foregroundStyle(.secondary); Button {showingSupport=true} label:{Label("Report a Bug",systemImage:"ladybug")} }.padding(.horizontal).padding(.vertical,8)
             Divider()
             switch d {
             case .today: today
@@ -134,6 +144,10 @@ struct Workspace: View {
     func field(_ f:Field,_ binding:Binding<String>) -> some View { VStack(alignment:.leading,spacing:4) { Text(f.title).font(.caption).foregroundStyle(.secondary); TextField(f.title,text:binding,axis:f.id.lowercased().contains("notes") || f.id == "remarks" ? .vertical : .horizontal).textFieldStyle(.roundedBorder).accessibilityLabel(f.title) }.padding(.vertical,2) }
     var today: some View {
         Form {
+            Section("Support") {
+                Button("Report a Bug") {showingSupport=true}
+                if diagnostics.hasPreviousTermination {Text(diagnostics.incidents.contains {$0.kind == .crash} ? "A crash from a previous launch was captured locally." : "The previous session ended unexpectedly; a crash is not confirmed."); Button("Review previous launch diagnostics") {showingSupport=true};Button("Dismiss previous diagnostics") {diagnostics.dismiss()}}
+            }
             Section("Local production") {
                 status
                 Picker("Open report",selection:Binding(get:{store.slot},set:{store.select($0)})) { Text("Current report").tag(store.slot); ForEach(store.documents.filter{$0.0 != store.slot},id:\.0) { doc in Text(doc.1).tag(doc.0) } }

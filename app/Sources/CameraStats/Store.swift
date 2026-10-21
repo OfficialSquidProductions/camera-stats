@@ -5,12 +5,12 @@ import CameraStatsCore
 @MainActor @Observable final class Store {
     private(set) var report = Report()
     private(set) var saved: Date?
-    var error: String?
+    var error: String? {didSet {if error != nil {DiagnosticsCenter.shared.capture(.reports)}}}
     var slot = UUID().uuidString
     var documents: [(String,String)] = []
     var blocked = false
     var pendingImport = false
-    var lastExportedRevision: Int? { UserDefaults.standard.object(forKey:"exported-"+slot) as? Int }
+    var lastExportedRevision: Int? { preferences.object(forKey:"exported-"+slot) as? Int }
     let root: URL
     let device: String
     private let preferences:UserDefaults

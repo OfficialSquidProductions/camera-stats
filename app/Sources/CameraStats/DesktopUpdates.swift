@@ -207,7 +207,7 @@ final class DesktopUpdateMediaLease {
     }
     func updater(_ updater:SPUUpdater,didFindValidUpdate item:SUAppcastItem) {availableVersion=item.displayVersionString;status="Shot Reporter \(item.displayVersionString) is available. Review release notes before installing."}
     func updaterDidNotFindUpdate(_ updater:SPUUpdater) {availableVersion=nil;status="You have the newest available \(channelName.lowercased()) build."}
-    func updater(_ updater:SPUUpdater,didAbortWithError error:Error) {status="Update check or install stopped: \(error.localizedDescription). Local reports and media recovery journals remain in their existing locations.";gate.updateAborted()}
+    func updater(_ updater:SPUUpdater,didAbortWithError error:Error) {DiagnosticsCenter.shared.capture(.updates,error:error as NSError);status="Update check or install stopped: \(error.localizedDescription). Local reports and media recovery journals remain in their existing locations.";gate.updateAborted()}
     func updater(_ updater:SPUUpdater,shouldPostponeRelaunchForUpdate item:SUAppcastItem,untilInvokingBlock installHandler:@escaping ()->Void)->Bool {
         gate.postpone(installHandler);DispatchQueue.main.async {[weak self] in self?.continueInstall()};return true
     }
@@ -237,6 +237,7 @@ final class DesktopUpdateMediaLease {
 #endif
 
 @MainActor final class DesktopUpdateAppDelegate:NSObject,NSApplicationDelegate {
+    func applicationWillTerminate(_ notification:Notification) {DiagnosticsCenter.shared.cleanShutdown()}
     weak var updates:DesktopUpdates?
     func applicationShouldTerminate(_ sender:NSApplication)->NSApplication.TerminateReply {guard let updates else {return .terminateNow};return updates.prepareToTerminate() ? .terminateNow:.terminateCancel}
 }

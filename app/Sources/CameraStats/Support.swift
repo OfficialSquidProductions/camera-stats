@@ -1,0 +1,142 @@
+import SwiftUI
+import Observation
+import UniformTypeIdentifiers
+import CameraStatsCore
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
+
+/// Explicit local QA launch only; never moves or rewrites the normal library.
+enum AppProfile {
+    static let root:URL? = {
+        guard let path=ProcessInfo.processInfo.environment["SHOT_REPORTER_TEST_PROFILE"],path.hasPrefix("/") else {return nil}
+        let url=URL(fileURLWithPath:path,isDirectory:true).standardizedFileURL
+        guard url.lastPathComponent.hasPrefix("ShotReporterTest-") else {return nil}
+        return url
+    }()
+    static let preferences:UserDefaults = root.flatMap {UserDefaults(suiteName:"org.squidproductions.shotreporter.test."+Exchange.digest(Data($0.path.utf8)))} ?? .standard
+}
+
+@MainActor @Observable final class DiagnosticsCenter {
+    static let shared=DiagnosticsCenter()
+    private var journal:DiagnosticsJournal?
+    private(set) var incidents:[DiagnosticIncident]=[]
+    private(set) var storageNotice:String?
+    private var nativeInstalled=false
+    private var retentionTimer:Timer?
+    var hasPreviousTermination:Bool {incidents.contains {$0.kind == .crash || $0.kind == .interrupted}}
+    init(root:URL?=nil,installNative:Bool=true) {
+        do {
+            let base=root ?? AppProfile.root ?? FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("org.squidproductions.camerastats",isDirectory:true)
+            let journal=try DiagnosticsJournal(root:base.appendingPathComponent("Diagnostics",isDirectory:true));self.journal=journal
+            #if os(macOS)
+            try journal.begin(trackInterrupted:true)
+            #else
+            // iOS routinely kills background apps without willTerminate. Only
+            // an actual fatal marker is a crash; no guessed crash from a kill.
+            try journal.begin(trackInterrupted:false)
+            #endif
+            incidents=journal.pending()
+            if installNative {
+                nativeInstalled=NativeCrashCapture.install(at:journal.signalURL)
+                if nativeInstalled {NSSetUncaughtExceptionHandler { _ in NativeCrashCapture.recordException() }}
+                else {storageNotice="Native crash capture is unavailable. Bug reporting and local failure categories remain available."}
+                retentionTimer=Timer.scheduledTimer(withTimeInterval:3_600,repeats:true) {[weak self] _ in Task {@MainActor in self?.refresh()}}
+            }
+        } catch {journal=nil;storageNotice="Local diagnostics could not be saved. You can still describe, copy or export a bug report."}
+    }
+    func capture(_ area:DiagnosticArea,error:NSError?=nil) {
+        do {try journal?.failure(area,error:error);incidents=journal?.pending() ?? []}
+        catch {storageNotice="Local diagnostics could not be saved. Existing reports are unchanged."}
+    }
+    func refresh() {incidents=journal?.pending() ?? []}
+    func dismiss() {
+        do {try journal?.dismiss(Set(incidents.map(\.id)));incidents=journal?.pending() ?? []}
+        catch {storageNotice="Diagnostics could not be dismissed. Please retry."}
+    }
+    func cleanShutdown() {journal?.cleanShutdown();if nativeInstalled {NativeCrashCapture.uninstall();nativeInstalled=false}}
+}
+
+struct BugReportView:View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var diagnostics:DiagnosticsCenter
+    @State private var description=""
+    @State private var steps=""
+    @State private var includeDiagnostics=true
+    @State private var exporting=false
+    @State private var message=""
+    @State private var exportData=Data()
+    private var version:String {let info=Bundle.main.infoDictionary ?? [:];return "\(info["CFBundleShortVersionString"] as? String ?? "development") (\(info["CFBundleVersion"] as? String ?? "local"))"}
+    private var report:String {SupportReport.body(description:description,steps:steps,version:version,os:ProcessInfo.processInfo.operatingSystemVersionString,incidents:diagnostics.incidents,includeDiagnostics:includeDiagnostics)}
+    var body:some View {
+        NavigationStack {
+            Form {
+                Section("Report a Bug") {
+                    Text("To: \(SupportReport.recipient)").textSelection(.enabled)
+                    Text("Nothing is sent automatically. Review the preview before opening an email draft. Opening a draft does not confirm delivery.").font(.callout)
+                    Text("No project, script, media contents, personal paths, environment or raw crash dumps are collected automatically. Common paths and secrets in your text are redacted; review any other identifying details you enter.").font(.caption)
+                }
+                Section("What happened?") {
+                    TextField("Description",text:$description,axis:.vertical).lineLimit(3...7).accessibilityLabel("Bug description")
+                    TextField("Steps to reproduce",text:$steps,axis:.vertical).lineLimit(3...7).accessibilityLabel("Steps to reproduce")
+                    Text("Each field is limited to 4,000 characters.").font(.caption)
+                    Toggle("Include sanitized diagnostic categories",isOn:$includeDiagnostics)
+                    if let notice=diagnostics.storageNotice {Text(notice).font(.caption)}
+                }
+                Section("Review exactly what will be shared") {
+                    Text(report).font(.system(.caption,design:.monospaced)).textSelection(.enabled).accessibilityLabel("Report preview").accessibilityValue(report)
+                }
+                Section("Share after review") {
+                    Button("Open email draft") {openDraft()}
+                    Button("Copy report") {copyReport()}
+                    Button("Export report as text…") {exportData=Data(report.utf8);exporting=true}
+                    if !message.isEmpty {Text(message).accessibilityLabel("Report action status")}
+                    Text("If your mail client cannot open the draft, copy or export the full report and address it to \(SupportReport.recipient).").font(.caption)
+                }
+                if !diagnostics.incidents.isEmpty {
+                    Section("Local diagnostics") {Button("Dismiss stored diagnostics",role:.destructive) {diagnostics.dismiss();message="Stored diagnostics dismissed. Nothing was sent."}}
+                }
+            }.formStyle(.grouped).navigationTitle("Report a Bug")
+                .toolbar {ToolbarItem(placement:.cancellationAction) {Button("Close") {dismiss()}}}
+                .onChange(of:description) {_,value in if value.count > 4_000 {description=String(value.prefix(4_000))}}
+                .onChange(of:steps) {_,value in if value.count > 4_000 {steps=String(value.prefix(4_000))}}
+                .fileExporter(isPresented:$exporting,document:ExportFile(data:exportData),contentType:.plainText,defaultFilename:"Shot-Reporter-support.txt") {result in
+                    switch result {case .success:message="Report exported locally. Nothing was sent.";case .failure:message="Export was cancelled or unavailable. Copy report is still available."}
+                }
+        }
+        #if os(macOS)
+        .frame(minWidth:560,idealWidth:700,minHeight:600,idealHeight:760)
+        #endif
+    }
+    private func copyReport() {
+        #if os(macOS)
+        NSPasteboard.general.clearContents();let copied=NSPasteboard.general.setString(report,forType:.string)
+        message=copied ? "Report copied. Nothing was sent." : "Clipboard unavailable. Export the report instead."
+        #else
+        UIPasteboard.general.string=report;message="Report copied. Nothing was sent."
+        #endif
+    }
+    private func openDraft() {
+        guard let url=SupportReport.mailURL(body:report) else {message="This report is too long for a reliable mail link. Copy or export the full report instead.";return}
+        #if os(macOS)
+        guard NSWorkspace.shared.urlForApplication(toOpen:url) != nil else {message="No supported mail client was found. Copy or export the report instead.";return}
+        message=NSWorkspace.shared.open(url) ? "Draft requested in your mail client. Delivery is not confirmed." : "The mail client could not open a draft. Copy or export the report instead."
+        #else
+        guard UIApplication.shared.canOpenURL(url) else {message="No supported mail client was found. Copy or export the report instead.";return}
+        UIApplication.shared.open(url,options:[:]) {opened in message=opened ? "Draft requested in your mail client. Delivery is not confirmed." : "The mail client could not open a draft. Copy or export the report instead."}
+        #endif
+    }
+}
+
+#if !os(macOS)
+final class DiagnosticsAppDelegate:NSObject,UIApplicationDelegate {
+    func applicationWillTerminate(_ application:UIApplication) {DiagnosticsCenter.shared.cleanShutdown()}
+}
+#else
+extension Notification.Name {static let reportBugRequested=Notification.Name("ShotReporterReportBugRequested")}
+struct SupportCommands:Commands {
+    var body:some Commands {CommandGroup(replacing:.help) {Button("Report a Bug…") {NotificationCenter.default.post(name:.reportBugRequested,object:nil)}}}
+}
+#endif
