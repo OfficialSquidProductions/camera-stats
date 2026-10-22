@@ -117,7 +117,12 @@ private final class DesktopScopedAccess:@unchecked Sendable {
     }
     func refresh(preserving message:String?=nil) {request(["command":"snapshot"],as:DesktopMediaSnapshot.self) {self.snapshot=$0;self.error=message}}
     func cancel() {playing=false;if busy {cancellationRequested=true;client.cancel()}}
-    func reportObject(_ report:Report)throws->String {String(decoding:try Exchange.encoder().encode(report),as:UTF8.self)}
+    func reportObject(_ report:Report)throws->String {
+        // The worker consumes the existing schema-1 report projection plus the
+        // effective copy preset. UI settings stay in the durable Swift report.
+        var workerReport = report; workerReport.namingSettings = nil
+        return String(decoding:try Exchange.encoder().encode(workerReport),as:UTF8.self)
+    }
     func register(_ path:URL,camera:String,roll:String,load:String) {request(["command":"register","path":path.path,"camera":camera,"roll":roll,"load":load],as:DesktopMediaSnapshot.self) {self.snapshot=$0}}
     func relink(_ id:String,path:URL) {request(["command":"relink","rootID":id,"path":path.path],as:DesktopMediaSnapshot.self) {self.snapshot=$0}}
     func decode(_ index:Int64) {guard let selected else {return};playing=false;request(["command":"frame","clipID":selected,"index":index],as:DesktopFrame.self) {self.frame=$0}}

@@ -11,9 +11,10 @@ import UIKit
 /// Explicit local QA launch only; never moves or rewrites the normal library.
 enum AppProfile {
     static let root:URL? = {
-        guard let path=ProcessInfo.processInfo.environment["SHOT_REPORTER_TEST_PROFILE"],path.hasPrefix("/") else {return nil}
+        // A preview bundle pins its profile so Finder/direct launches are isolated too.
+        guard let path=(Bundle.main.object(forInfoDictionaryKey:"ShotReporterPreviewProfileRoot") as? String) ?? ProcessInfo.processInfo.environment["SHOT_REPORTER_TEST_PROFILE"] else {return nil}
         let url=URL(fileURLWithPath:path,isDirectory:true).standardizedFileURL
-        guard url.lastPathComponent.hasPrefix("ShotReporterTest-") else {return nil}
+        guard path.hasPrefix("/"),url.lastPathComponent.hasPrefix("ShotReporterTest-") else {fatalError("Invalid isolated Shot Reporter preview profile; normal library will not be opened.")}
         return url
     }()
     static let preferences:UserDefaults = root.flatMap {UserDefaults(suiteName:"org.squidproductions.shotreporter.test."+Exchange.digest(Data($0.path.utf8)))} ?? .standard

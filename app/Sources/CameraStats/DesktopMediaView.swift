@@ -15,7 +15,8 @@ import CameraStatsCore
     @State private var take=""
     @State private var index="0"
     @State private var completeSource=false
-    @State private var preset=DesktopPreset(name:"Movie",template:DesktopPreset.movie)
+    @State private var showingSettings=false
+    private var preset:DesktopPreset {store.namingCopyPreset}
     init(store:Store,model:DesktopMediaModel?=nil) {
         self.store=store
         _model=State(initialValue:model ?? DesktopMediaModel(root:store.root,reportID:store.report.id))
@@ -36,6 +37,7 @@ import CameraStatsCore
             if let error=model.error {Text(error).font(.callout).foregroundStyle(.red).textSelection(.enabled)}
             if let notice=model.notice {Text(notice).font(.caption).foregroundStyle(.secondary)}
         }.padding(16).frame(minWidth:850,minHeight:620).background(Color("Canvas"))
+        .sheet(isPresented:$showingSettings) {NamingSettingsView(store:store)}
         .task {model.refresh()}
         .onDisappear {model.playing=false;if model.busy {model.cancel()}}
         .onChange(of:model.selected) {_,_ in
@@ -131,10 +133,9 @@ import CameraStatsCore
     private var naming:some View {
         VStack(alignment:.leading,spacing:8) {
             Text("Preview renamed working copies").font(.headline)
-            HStack {Button("Movie") {preset=DesktopPreset(name:"Movie",template:DesktopPreset.movie)};Button("TV") {preset=DesktopPreset(name:"TV",template:DesktopPreset.television)};Menu("Saved presets") {ForEach(model.snapshot.presets) {saved in Button("\(saved.name) v\(saved.version)") {preset=saved}}}.disabled(model.snapshot.presets.isEmpty);Text("Preset v\(preset.version)").font(.caption).foregroundStyle(.secondary)}
-            TextField("Preset name",text:Binding(get:{preset.name},set:{preset.name=$0;preset.version += 1})).textFieldStyle(.roundedBorder)
-            TextField("Declarative naming template",text:Binding(get:{preset.template},set:{preset.template=$0;preset.version += 1})).textFieldStyle(.roundedBorder)
-            Text("Tokens include project, season, episode, scene, take:03, camera, roll, original and asset. Missing values and collisions block the entire batch. Checked clips need a confirmed frame and one current report association.").font(.caption).foregroundStyle(.secondary)
+            HStack {Text("\(preset.name) · saved with this report").font(.caption);Spacer();Button("Naming settings…") {showingSettings=true}}
+            Text(preset.template).font(.caption.monospaced()).textSelection(.enabled)
+            Text("Missing enabled values and collisions block the entire batch. Checked clips need a confirmed frame and one current report association.").font(.caption).foregroundStyle(.secondary)
             Button("Preflight \(checked.count) checked clips") {if let destination=model.chooseDirectory("Choose a copy destination outside source folders") {model.preflight(checked,report:store.report,preset:preset,destination:destination)}}.disabled(model.busy || checked.isEmpty)
         }.disabled(model.busy)
     }

@@ -68,11 +68,20 @@ public enum Naming {
     public static let tv = "{project}_S{season}E{episode}_SC{scene}_TK{take}_CAM-{camera}"
     public static let movie = "{project}_SC{scene}_TK{take}_CAM-{camera}"
     public static func preview(template: String, report: Report, entry: Entry) throws -> String {
+        guard (1...500).contains(template.count) else {throw ReportError.invalid("Naming template must contain 1–500 characters")}
         var values = report.values.merging(entry.values){_,new in new}; values["project"] = report.values["title"]
         var result = template
         while let open = result.firstIndex(of:"{"), let close = result[open...].firstIndex(of:"}") {
-            let token = String(result[result.index(after:open)..<close])
-            guard let value = values[token], !value.isEmpty else { throw ReportError.invalid("Missing naming token: \(token)") }
+            let expression = String(result[result.index(after:open)..<close])
+            let parts = expression.split(separator: ":", omittingEmptySubsequences: false)
+            guard let first = parts.first, !first.isEmpty else {throw ReportError.invalid("Empty naming token")}
+            let token = String(first)
+            guard var value = values[token], !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw ReportError.invalid("Missing naming token: \(token)") }
+            if parts.count > 1 {
+                guard parts.count == 2, let width = Int(parts[1]), (1...32).contains(width), value.utf8.allSatisfy({(48...57).contains($0)}) else {throw ReportError.invalid("Invalid numeric naming token: \(expression)")}
+                value = String(value.drop(while: {$0 == "0"})); if value.isEmpty {value = "0"}
+                value = String(repeating: "0", count: max(0, width - value.count)) + value
+            }
             guard !value.contains("{") && !value.contains("}") else { throw ReportError.invalid("Invalid token value") }
             result.replaceSubrange(open...close,with:value)
         }

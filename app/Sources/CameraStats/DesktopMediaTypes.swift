@@ -14,6 +14,11 @@ struct DesktopPreset:Codable,Identifiable {var id:String=UUID().uuidString;var v
     static let movie="{project}_SC{scene}_TK{take:03}_CAM-{camera}_{original}"
     static let television="{project}_S{season:02}E{episode:02}_SC{scene}_TK{take:03}_CAM-{camera}_{original}"
 }
+@MainActor extension Store {
+    var namingCopyPreset: DesktopPreset {
+        DesktopPreset(id:report.id+"-"+report.naming.selectionID,version:max(1,report.revision),name:report.naming.selection.name,template:report.naming.copyTemplate)
+    }
+}
 struct DesktopCopyItem:Codable,Identifiable {var id:String {fileId};let clipId:String;let fileId:String;let rootId:String;let sourceRelative:String;let sourceSHA256:String;let size:Int64;let targetName:String;let scene:String;let take:String;let frame:DesktopFrame;let association:DesktopAssociation;let resolved:[String:String];let state:String;let stages:[String];let publishedKey:String?;let undoRelative:String?}
 struct DesktopCopyJob:Codable,Identifiable {let id:String;let projectId:String;let reportRevision:Int64;let reportFingerprint:String;let preset:DesktopPreset;let destination:String;let createdAt:String;let items:[DesktopCopyItem];let state:String;let error:String?}
 struct DesktopMediaAudit:Codable,Identifiable {let id:String;let subject:String;let action:String;let detail:String;let time:String}

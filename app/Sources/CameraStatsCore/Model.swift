@@ -43,6 +43,7 @@ public struct Report: Codable, Equatable {
     public var entries: [Entry] = []
     public var history: [Change] = []
     public var importedPackages: [String] = []
+    public var namingSettings: NamingSettings?
     public var namingTemplate = "{project}_SC{scene}_TK{take}_CAM-{camera}"
     public init() { values["date"] = ISO8601DateFormatter().string(from: Date()).prefix(10).description }
     public var active: [Entry] { entries.filter { !$0.deleted } }

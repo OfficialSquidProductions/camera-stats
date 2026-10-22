@@ -34,6 +34,87 @@ struct ExportFile: FileDocument {
         #endif
     }
 }
+@MainActor struct NamingSettingsView: View {
+    @Bindable var store: Store
+    @Environment(\.dismiss) private var dismiss
+    #if os(macOS)
+    @State private var media: DesktopMediaModel
+    #endif
+    init(store: Store) {
+        self.store = store
+        #if os(macOS)
+        _media = State(initialValue: DesktopMediaModel(root: store.root, reportID: store.report.id))
+        #endif
+    }
+    private var settings: NamingSettings { store.report.naming }
+    private var takePreview: String {
+        guard let entry = store.report.active.first else {return "Add a take to preview its name."}
+        return (try? Naming.preview(template: settings.reportTemplate, report: store.report, entry: entry)) ?? "Add missing values or correct the template to preview a take name."
+    }
+    private var reportPreview: String {(try? store.report.exportName(extension: "camreport")) ?? "Report name needs values for its enabled components."}
+    private func change(_ action: (inout NamingSettings) -> Void) { store.change("Updated naming settings; metadata retained") { $0.updateNaming(action) } }
+    private func templateBinding(copy: Bool) -> Binding<String> {
+        Binding(get: {copy ? settings.selection.copyTemplate : settings.selection.reportTemplate}, set: { value in
+            change { settings in var selection = settings.selection; if copy {selection.copyTemplate = value} else {selection.reportTemplate = value}; settings.selection = selection }
+        })
+    }
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {Label("Settings", systemImage: "gearshape").font(.title2.bold()); Spacer(); Button("Done") {dismiss()}.keyboardShortcut(.cancelAction)}.padding(20)
+            Divider()
+            Form {
+                Section("Naming preset") {
+                    Picker("Preset", selection: Binding(get: {settings.selectionID}, set: {value in change {$0.select(value)}})) {
+                        ForEach(NamingSettings.Preset.allCases) {Text($0.rawValue).tag($0.rawValue)}
+                        ForEach(settings.savedSelectionIDs, id: \.self) {id in Text(settings.selections[id]?.name ?? "Saved preset").tag(id)}
+                    }
+                    Text("Changes save automatically with this report. Each preset remembers its templates and component choices. Hidden metadata is kept.").font(.caption).foregroundStyle(.secondary)
+                    if settings.preset == .movie {Text("Movie names omit season and episode. Switch to TV / Episodic to use them.").font(.caption)}
+                }
+                Section("Include in generated names") {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 200))], alignment: .leading, spacing: 12) {
+                        ForEach(settings.visibleComponents, id: \.self) {component in
+                            Toggle(component.capitalized, isOn: Binding(get: {settings.enabled(component) && settings.includes(component)}, set: {value in change {$0.setEnabled(component, value)}}))
+                        }
+                    }
+                    Text("Original and asset apply to footage copies. Missing enabled values block footage naming; turn off components you do not need.").font(.caption).foregroundStyle(.secondary)
+                }
+                if settings.preset != .movie {
+                    Section("Episode metadata") {
+                        ForEach(Schema.project.filter {["season", "episode"].contains($0.id)}) {field in
+                            TextField(field.title, text: Binding(get: {store.report.values[field.id, default: ""]}, set: {value in store.change {$0.values[field.id] = value}})).textFieldStyle(.roundedBorder)
+                        }
+                    }
+                }
+                Section("Name preview") {
+                    Text("Take: " + takePreview).font(.caption.monospaced()).textSelection(.enabled).accessibilityLabel("Take name preview: " + takePreview)
+                    Text("Report: " + reportPreview).font(.caption.monospaced()).textSelection(.enabled).accessibilityLabel("Report name preview: " + reportPreview)
+                    if store.report.reportNameNeedsValues {Text("Complete the enabled report naming values to use this preset. Draft exports use the safe Shot-Reporter name shown above.").font(.caption).foregroundStyle(.secondary)}
+                    Text("Footage copy template: " + settings.copyTemplate).font(.caption.monospaced()).textSelection(.enabled)
+                }
+                Section { DisclosureGroup("Advanced templates") {
+                    TextField("Preset name", text: Binding(get: {settings.selection.name}, set: {value in change {var selection = $0.selection; selection.name = value; $0.selection = selection}})).textFieldStyle(.roundedBorder)
+                    TextField("Take name template", text: templateBinding(copy: false), axis: .vertical).textFieldStyle(.roundedBorder)
+                    TextField("Footage copy template", text: templateBinding(copy: true), axis: .vertical).textFieldStyle(.roundedBorder)
+                    Text("Tokens: project, season, episode, scene, take, camera, roll. Footage also supports original and asset. Use :02 or :03 for numeric padding. Components separated by underscores are omitted when disabled. Source templates stay saved; generated names use the selected components.").font(.caption).foregroundStyle(.secondary)
+                    #if os(macOS)
+                    Menu("Saved footage presets") {
+                        ForEach(media.snapshot.presets) {saved in
+                            Button("\(saved.name) v\(saved.version)") {change {$0.loadSaved(id:saved.id+":v\(saved.version)",name:saved.name,template:saved.template)}}
+                        }
+                    }.disabled(media.snapshot.presets.isEmpty)
+                    #endif
+                } }
+                Section {Label(store.blocked ? "Recovery required" : store.error != nil ? "Change could not be saved" : "Saved automatically on this device", systemImage: store.blocked || store.error != nil ? "exclamationmark.triangle" : "checkmark.circle").font(.caption)}
+            }.formStyle(.grouped).scrollContentBackground(.hidden)
+        }.background(Color("Canvas"))
+        .frame(minWidth: 320, idealWidth: 620, minHeight: 480, idealHeight: 740)
+        #if os(macOS)
+        .task {media.refresh()}
+        #endif
+    }
+}
+
 struct Brand: View {
     var body: some View {
         HStack(spacing:12) {
@@ -77,6 +158,7 @@ struct Workspace: View {
     @AppStorage("detail") private var detail = "Standard"
     @State private var scene = ""
     @State private var pdfPreview: PDFReview?
+    @State private var showingSettings=false
     @State private var showingSupport=false
     private var diagnostics:DiagnosticsCenter {DiagnosticsCenter.shared}
     var scheme:ColorScheme? { theme == "Dark" ? .dark : theme == "Light" ? .light : nil }
@@ -86,6 +168,7 @@ struct Workspace: View {
             NavigationSplitView {
                 Brand().padding(.horizontal)
                 List(Destination.allCases,selection:$destination) { d in Label(d.rawValue,systemImage:d.icon).tag(d) }
+                Button {showingSettings=true} label: {Label("Settings",systemImage:"gearshape").frame(maxWidth:.infinity,alignment:.leading)}.buttonStyle(.plain).padding(.horizontal,16).padding(.vertical,8).keyboardShortcut(",",modifiers:.command)
                 VStack(alignment:.leading) { Text("LOCAL DESKTOP ALPHA 0.2").font(.caption.bold()); Text("\(store.report.values["title",default:"Untitled"]) · r\(store.report.revision)").font(.caption); status }.padding()
             } detail: { content(destination ?? .today) }
             #else
@@ -102,6 +185,7 @@ struct Workspace: View {
             do { if let url = try result.get().first { readImport(url) } } catch { store.error = error.localizedDescription }
         }
         .fileExporter(isPresented:$exporting,document:exportFile,contentType:exportType,defaultFilename:exportName) { result in switch result { case .failure(let e): store.error = e.localizedDescription; case .success: AppProfile.preferences.set(store.report.revision,forKey:"exported-"+store.slot) } }
+        .sheet(isPresented:$showingSettings) {NamingSettingsView(store:store)}
         .sheet(isPresented:$showingSupport) {BugReportView(diagnostics:diagnostics)}
         .sheet(item:$pending) { item in importSheet(item) }
         .onChange(of:pending != nil) {_,value in store.pendingImport=value}
@@ -164,7 +248,7 @@ struct Workspace: View {
                 Text("Positions describe responsibilities. This alpha shows all report groups; every requirement remains in Review.").font(.caption)
                 Picker("Appearance",selection:$theme) { ForEach(["System","Light","Dark"],id:\.self) { Text($0) } }
             }
-            Section("Project / crew · complete report") { ForEach(Schema.project) { f in field(f,projectBinding(f.id)) } }
+            Section("Project / crew · complete report") { ForEach(Schema.project.filter {store.report.naming.preset != .movie || !["season","episode"].contains($0.id)}) { f in field(f,projectBinding(f.id)) } }
             Section("Defaults · snapshot when a new take is created") { ForEach(Schema.settings) { f in field(f,defaultBinding(f.id)) }; Text("Editing defaults affects future takes. Existing takes keep their recorded settings.").font(.caption) }
         }.formStyle(.grouped).scrollContentBackground(.hidden).background(Color("Canvas"))
     }
@@ -226,21 +310,12 @@ struct Workspace: View {
                 Button("Restore previous local snapshot as separate report") { store.restore() }
             }
             Section("Preview and export") {
-                Button("Preview landscape Camera Report PDF") { do { pdfPreview = PDFReview(data:try Reports.pdf(store.report),revision:store.report.revision) } catch { store.error = error.localizedDescription } }
+                Button("Preview landscape Camera Report PDF") { do { pdfPreview = PDFReview(data:try Reports.pdf(store.report),revision:store.report.revision,filename:try store.report.exportName(extension:"pdf")) } catch { store.error = error.localizedDescription } }
                 Button("Export CSV") { export(.commaSeparatedText,"csv") {Data(Reports.csv(store.report).utf8)} }
                 Button("Export HTML report") { export(.html,"html") {Data(Reports.html(store.report).utf8)} }
                 Text("PDF is a frozen report with continuation pages and a draft/ready label. CSV and HTML are generic exports; no NLE adapter has been certified.").font(.caption)
             }
-            Section("Naming preset · preview only") {
-                Button("TV preset") { store.change { $0.namingTemplate = Naming.tv } }; Button("Movie preset") { store.change { $0.namingTemplate = Naming.movie } }
-                TextField("Custom naming template",text:Binding(get:{store.report.namingTemplate},set:{v in store.change{$0.namingTemplate = v}}),axis:.vertical)
-                if let e = store.report.active.first { Text((try? Naming.preview(template:store.report.namingTemplate,report:store.report,entry:e)) ?? "Missing values or invalid portable filename").font(.caption.monospaced()) }
-                #if os(macOS)
-                Text("Use Footage to review frames and prepare verified named copies. RAW review requires separately installed vendor tools. Slate OCR and NLE conform remain unfinished. Source footage stays unchanged.").font(.caption)
-                #else
-                Text("RAW decoding, slate OCR, physical file renaming, and NLE conform are not available in this field alpha. Source footage is never changed.").font(.caption)
-                #endif
-            }
+            Section("Naming") { Button("Naming settings…") {showingSettings=true}; Text("Choose presets and filename components in Settings.").font(.caption).foregroundStyle(.secondary) }
             Section("History") { ForEach(Array(store.report.history.suffix(30).reversed().enumerated()),id:\.offset) { _,h in VStack(alignment:.leading) { Text(h.summary).font(.caption); Text("\(h.device) · \(h.date.formatted())").font(.caption2).foregroundStyle(.secondary) } } }
             Section("About") {
                 Brand()
@@ -252,8 +327,7 @@ struct Workspace: View {
             }
         }.formStyle(.grouped).scrollContentBackground(.hidden).background(Color("Canvas"))
     }
-    func export(_ type:UTType,_ ext:String,_ data:()->Data) { exportType = type; exportName = "Shot-Reporter-r\(store.report.revision).\(ext)"; exportFile = ExportFile(data:data()); exporting = true }
-    func export(_ type:UTType,_ ext:String,_ data:() throws ->Data) { do { exportType = type; exportName = "Shot-Reporter-r\(store.report.revision).\(ext)"; exportFile = ExportFile(data:try data()); exporting = true } catch {store.error = error.localizedDescription} }
+    func export(_ type:UTType,_ ext:String,_ data:() throws ->Data) { do { exportType = type; exportName = try store.report.exportName(extension:ext); exportFile = ExportFile(data:try data()); exporting = true } catch {store.error = error.localizedDescription} }
     struct ImportReview: Identifiable { let id = UUID(); let package:Exchange.Package }
     func importSheet(_ item:ImportReview) -> some View {
         let p = item.package; let preview = try? Exchange.preview(local:store.report,incoming:p)
@@ -268,7 +342,7 @@ struct Workspace: View {
         }.frame(minWidth:320,minHeight:450)
     }
 }
-struct PDFReview: Identifiable { let id = UUID(); let data:Data; let revision:Int }
+struct PDFReview: Identifiable { let id = UUID(); let data:Data; let revision:Int; let filename:String }
 struct PDFReviewScreen: View {
     let item:PDFReview
     @Environment(\.dismiss) var dismiss
@@ -280,7 +354,7 @@ struct PDFReviewScreen: View {
                 Button("Done") { dismiss() }
                 Button("Save PDF…") { exporting = true }
             }
-            .fileExporter(isPresented:$exporting,document:ExportFile(data:item.data),contentType:.pdf,defaultFilename:"Shot-Reporter-r\(item.revision).pdf") { result in if case .failure(let e) = result { error = e.localizedDescription } }
+            .fileExporter(isPresented:$exporting,document:ExportFile(data:item.data),contentType:.pdf,defaultFilename:item.filename) { result in if case .failure(let e) = result { error = e.localizedDescription } }
             .alert("PDF export",isPresented:Binding(get:{error != nil},set:{if !$0 {error = nil}})) { Button("OK") {error = nil} } message:{Text(error ?? "")}
         }.frame(minWidth:320,minHeight:450)
     }
